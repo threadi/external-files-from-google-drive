@@ -17,7 +17,7 @@ jobs:
           composer update
 
       - name: Generate hooks documentation file
-        run: vendor/bin/wp-documentor parse app --format=markdown --output=docs/hooks.md --prefix=efmlgcs_
+        run: vendor/bin/wp-documentor parse app --format=markdown --output=docs/hooks.md --prefix=efmlgd_
 
       - name: Update file
         uses: stefanzweifel/git-auto-commit-action@v5
