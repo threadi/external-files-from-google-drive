@@ -1,0 +1,70 @@
+<?php
+/**
+ * This file contains the main initialization object for this plugin.
+ *
+ * @package external-files-from-google-drive
+ */
+
+namespace ExternalFilesFromGoogleDrive\Plugin;
+
+// prevent direct access.
+defined( 'ABSPATH' ) || exit;
+
+/**
+ * Initialize the plugin, connect all together.
+ */
+class Init {
+
+	/**
+	 * Instance of actual object.
+	 *
+	 * @var ?Init
+	 */
+	private static ?Init $instance = null;
+
+	/**
+	 * Constructor, not used as this a Singleton object.
+	 */
+	private function __construct() {}
+
+	/**
+	 * Prevent cloning of this object.
+	 *
+	 * @return void
+	 */
+	private function __clone() {}
+
+	/**
+	 * Return instance of this object as singleton.
+	 *
+	 * @return Init
+	 */
+	public static function get_instance(): Init {
+		if ( is_null( self::$instance ) ) {
+			self::$instance = new static();
+		}
+
+		return self::$instance;
+	}
+
+	/**
+	 * Initialize this object.
+	 *
+	 * @return void
+	 */
+	public function init(): void {
+		add_filter( 'efml_services_support', array( $this, 'add_service' ) );
+	}
+
+	/**
+	 * Add the service to the main plugin.
+	 *
+	 * @param array<int,string> $services The list of services.
+	 *
+	 * @return array<int,string>
+	 */
+	public function add_service( array $services ): array {
+		$services[] = 'ExternalFilesFromGoogleDrive\GoogleDrive';
+		return $services;
+	}
+}
