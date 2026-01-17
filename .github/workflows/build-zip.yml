@@ -21,7 +21,6 @@ jobs:
         run: |
           composer install
           composer update
-          cd ../../../
           rm -fr build
           rm -fr releases
           rm -fr svn
