@@ -1,4 +1,4 @@
-=== External files from Google Drivee ===
+=== External files from Google Drive ===
 Contributors: threadi
 Tags: external files, media library, google drive
 Requires at least: 6.2

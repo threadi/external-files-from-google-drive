@@ -127,7 +127,7 @@ class GoogleDrive extends Service_Base implements Service {
 		}
 
 		// set title.
-		$this->title = __( 'Choose file(s) from your Google Drive', 'external-files-in-media-library' );
+		$this->title = __( 'Choose file(s) from your Google Drive', 'external-files-from-google-drive' );
 
 		// use hooks.
 		add_filter( 'query_vars', array( $this, 'set_query_vars' ) );
@@ -209,20 +209,20 @@ class GoogleDrive extends Service_Base implements Service {
 				$dialog = $this->get_connect_dialog();
 
 				$field = new Button();
-				$field->set_title( __( 'API connection', 'external-files-in-media-library' ) );
-				$field->set_button_title( __( 'Connect now', 'external-files-in-media-library' ) );
+				$field->set_title( __( 'API connection', 'external-files-from-google-drive' ) );
+				$field->set_button_title( __( 'Connect now', 'external-files-from-google-drive' ) );
 			} else {
 				// create the dialog.
 				$dialog = $this->get_disconnect_dialog();
 
 				$field = new Button();
-				$field->set_title( __( 'API connection', 'external-files-in-media-library' ) );
-				$field->set_button_title( __( 'Disconnect', 'external-files-in-media-library' ) );
+				$field->set_title( __( 'API connection', 'external-files-from-google-drive' ) );
+				$field->set_button_title( __( 'Disconnect', 'external-files-from-google-drive' ) );
 
 				// get the creation date from token.
 				if ( ! empty( $access_token['created'] ) ) {
 					/* translators: %1$s will be replaced by a date and time. */
-					$field->set_description( sprintf( __( 'Created at %1$s', 'external-files-in-media-library' ), Helper::get_format_date_time( gmdate( 'Y-m-d H:i', absint( $access_token['created'] ) ) ) ) . '<br><a href="' . Directory_Listing::get_instance()->get_view_directory_url( $this ) . '" class="button button-secondary">' . __( 'View and import files', 'external-files-in-media-library' ) . '</a>' );
+					$field->set_description( sprintf( __( 'Created at %1$s', 'external-files-from-google-drive' ), Helper::get_format_date_time( gmdate( 'Y-m-d H:i', absint( $access_token['created'] ) ) ) ) . '<br><a href="' . Directory_Listing::get_instance()->get_view_directory_url( $this ) . '" class="button button-secondary">' . __( 'View and import files', 'external-files-from-google-drive' ) . '</a>' );
 				}
 			}
 			$field->add_class( 'easy-dialog-for-wordpress' );
@@ -236,7 +236,7 @@ class GoogleDrive extends Service_Base implements Service {
 			$setting->set_type( 'integer' );
 			$setting->set_default( 0 );
 			$field = new Checkbox();
-			$field->set_title( __( 'Show shared files', 'external-files-in-media-library' ) );
+			$field->set_title( __( 'Show shared files', 'external-files-from-google-drive' ) );
 			$field->set_setting( $setting );
 			$field->set_readonly( $this->is_disabled() );
 			$setting->set_field( $field );
@@ -247,7 +247,7 @@ class GoogleDrive extends Service_Base implements Service {
 			$setting->set_type( 'integer' );
 			$setting->set_default( 0 );
 			$field = new Checkbox();
-			$field->set_title( __( 'Show trashed files', 'external-files-in-media-library' ) );
+			$field->set_title( __( 'Show trashed files', 'external-files-from-google-drive' ) );
 			$field->set_setting( $setting );
 			$field->set_readonly( $this->is_disabled() );
 			$setting->set_field( $field );
@@ -259,9 +259,9 @@ class GoogleDrive extends Service_Base implements Service {
 			$setting->set_show_in_rest( false );
 			$setting->prevent_export( true );
 			$field = new TextInfo();
-			$field->set_title( __( 'Hint', 'external-files-in-media-library' ) );
+			$field->set_title( __( 'Hint', 'external-files-from-google-drive' ) );
 			/* translators: %1$s will be replaced by a URL. */
-			$field->set_description( sprintf( __( 'Each user will find its settings in his own <a href="%1$s">user profile</a>.', 'external-files-in-media-library' ), $this->get_config_url() ) );
+			$field->set_description( sprintf( __( 'Each user will find its settings in his own <a href="%1$s">user profile</a>.', 'external-files-from-google-drive' ), $this->get_config_url() ) );
 			$setting->set_field( $field );
 		}
 
@@ -271,8 +271,8 @@ class GoogleDrive extends Service_Base implements Service {
 		$setting->set_type( 'integer' );
 		$setting->set_default( 10 );
 		$field = new Number();
-		$field->set_title( __( 'Max. files to load per iteration', 'external-files-in-media-library' ) );
-		$field->set_description( __( 'This value specifies how many files should be loaded during a directory import. The higher the value, the greater the likelihood of timeouts during import.', 'external-files-in-media-library' ) );
+		$field->set_title( __( 'Max. files to load per iteration', 'external-files-from-google-drive' ) );
+		$field->set_description( __( 'This value specifies how many files should be loaded during a directory import. The higher the value, the greater the likelihood of timeouts during import.', 'external-files-from-google-drive' ) );
 		$field->set_setting( $setting );
 		$setting->set_field( $field );
 
@@ -377,7 +377,7 @@ class GoogleDrive extends Service_Base implements Service {
 		// save it global, if this is enabled.
 		if ( $this->is_mode( 'global' ) ) {
 			// log event.
-			Log::get_instance()->create( __( 'New Google Drive access token saved for global usage.', 'external-files-in-media-library' ), '', 'info', 2 );
+			Log::get_instance()->create( __( 'New Google Drive access token saved for global usage.', 'external-files-from-google-drive' ), '', 'info', 2 );
 
 			// save the updated token.
 			update_option( 'eml_google_drive_access_tokens', $access_token );
@@ -403,7 +403,7 @@ class GoogleDrive extends Service_Base implements Service {
 
 			// log event.
 			/* translators: %1$s will be replaced by the username. */
-			Log::get_instance()->create( sprintf( __( 'New Google Drive access token saved for user %1$s.', 'external-files-in-media-library' ), '<em>' . $user->display_name . '</em>' ), '', 'info', 2 );
+			Log::get_instance()->create( sprintf( __( 'New Google Drive access token saved for user %1$s.', 'external-files-from-google-drive' ), '<em>' . $user->display_name . '</em>' ), '', 'info', 2 );
 
 			// save the token.
 			update_user_meta( $user_id, 'efml_google_drive_access_tokens', Crypt::get_instance()->encrypt( Helper::get_json( $access_token ) ) );
@@ -484,7 +484,7 @@ class GoogleDrive extends Service_Base implements Service {
 		}
 
 		// log this event.
-		Log::get_instance()->create( __( 'Given GoogleDrive-URL could not be used as external file in websites.', 'external-files-in-media-library' ), esc_url( $url ), 'error' );
+		Log::get_instance()->create( __( 'Given GoogleDrive-URL could not be used as external file in websites.', 'external-files-from-google-drive' ), esc_url( $url ), 'error' );
 
 		// return result to prevent any further import.
 		return true;
@@ -697,7 +697,7 @@ class GoogleDrive extends Service_Base implements Service {
 		// bail if return value contains any errors.
 		if ( ! empty( $access_token['error'] ) ) {
 			// log this event.
-			Log::get_instance()->create( __( 'Got error from Google OAuth:', 'external-files-in-media-library' ) . ' <code>' . wp_json_encode( $access_token ) . '</code>', '', 'error' );
+			Log::get_instance()->create( __( 'Got error from Google OAuth:', 'external-files-from-google-drive' ) . ' <code>' . wp_json_encode( $access_token ) . '</code>', '', 'error' );
 
 			// return 404-page.
 			return Helper::get_404_template();
@@ -765,12 +765,12 @@ class GoogleDrive extends Service_Base implements Service {
 			$results = $service->files->listFiles( $query );
 		} catch ( Exception $e ) {
 			// log event.
-			Log::get_instance()->create( __( 'List of files could not be loaded from Google Drive. Error:', 'external-files-in-media-library' ) . ' <code>' . wp_json_encode( $e->getErrors() ) . '</code>', '', 'error' );
+			Log::get_instance()->create( __( 'List of files could not be loaded from Google Drive. Error:', 'external-files-from-google-drive' ) . ' <code>' . wp_json_encode( $e->getErrors() ) . '</code>', '', 'error' );
 
 			// create the error entry.
 			$error_obj = new Url_Result();
 			/* translators: %1$s will be replaced by a URL. */
-			$error_obj->set_result_text( sprintf( __( 'List of files could not be loaded from Google Drive. Check the <a href="%1$s" target="_blank">log</a> for detailed information.', 'external-files-in-media-library' ), Helper::get_log_url() ) );
+			$error_obj->set_result_text( sprintf( __( 'List of files could not be loaded from Google Drive. Check the <a href="%1$s" target="_blank">log</a> for detailed information.', 'external-files-from-google-drive' ), Helper::get_log_url() ) );
 			$error_obj->set_url( $directory );
 			$error_obj->set_error( true );
 
@@ -873,7 +873,7 @@ class GoogleDrive extends Service_Base implements Service {
 							$parent_folder_obj = $service->files->get( $parent_folder_id );
 						} catch ( Exception $e ) {
 							// log event.
-							Log::get_instance()->create( __( 'Loading folder data results in an error:', 'external-files-in-media-library' ) . ' <code>' . wp_json_encode( $e->getErrors() ) . '</code>', '', 'error' );
+							Log::get_instance()->create( __( 'Loading folder data results in an error:', 'external-files-from-google-drive' ) . ' <code>' . wp_json_encode( $e->getErrors() ) . '</code>', '', 'error' );
 
 							// do nothing more.
 							continue;
@@ -923,9 +923,9 @@ class GoogleDrive extends Service_Base implements Service {
 		return array(
 			array(
 				'action' => 'efml_get_import_dialog( { "service": "' . $this->get_name() . '", "urls": "' . $this->get_url_mark() . '" + file.file, "fields": config.fields, "term": term } );',
-				'label'  => __( 'Import', 'external-files-in-media-library' ),
+				'label'  => __( 'Import', 'external-files-from-google-drive' ),
 				'show'   => 'let mimetypes = "' . $mimetypes . '";mimetypes.includes( file["mime-type"] )',
-				'hint'   => '<span class="dashicons dashicons-editor-help" title="' . esc_attr__( 'File-type is not supported', 'external-files-in-media-library' ) . '"></span>',
+				'hint'   => '<span class="dashicons dashicons-editor-help" title="' . esc_attr__( 'File-type is not supported', 'external-files-from-google-drive' ) . '"></span>',
 			),
 		);
 	}
@@ -943,19 +943,19 @@ class GoogleDrive extends Service_Base implements Service {
 		$actions = array(
 			array(
 				'action' => 'location.href="https://drive.google.com/drive/my-drive";',
-				'label'  => __( 'Go to Google Drive', 'external-files-in-media-library' ),
+				'label'  => __( 'Go to Google Drive', 'external-files-from-google-drive' ),
 			),
 			array(
 				'action' => 'location.href="' . esc_url( $config_url ) . '";',
-				'label'  => __( 'Settings', 'external-files-in-media-library' ),
+				'label'  => __( 'Settings', 'external-files-from-google-drive' ),
 			),
 			array(
 				'action' => 'efml_get_import_dialog( { "service": "' . $this->get_name() . '", "urls": "' . $this->get_url_mark() . '" + actualDirectoryPath, "fields": config.fields, "term": config.term } );',
-				'label'  => __( 'Import active directory', 'external-files-in-media-library' ),
+				'label'  => __( 'Import active directory', 'external-files-from-google-drive' ),
 			),
 			array(
 				'action' => 'efml_save_as_directory( "' . $this->get_name() . '", actualDirectoryPath, config.fields, config.term );',
-				'label'  => __( 'Save active directory as your external source', 'external-files-in-media-library' ),
+				'label'  => __( 'Save active directory as your external source', 'external-files-from-google-drive' ),
 			),
 		);
 
@@ -1015,7 +1015,7 @@ class GoogleDrive extends Service_Base implements Service {
 		}
 
 		// return the description with link to settings.
-		return '<a class="connect button button-secondary" href="' . esc_url( $config_url ) . '">' . __( 'Connect', 'external-files-in-media-library' ) . '</a>';
+		return '<a class="connect button button-secondary" href="' . esc_url( $config_url ) . '">' . __( 'Connect', 'external-files-from-google-drive' ) . '</a>';
 	}
 
 	/**
@@ -1138,7 +1138,7 @@ class GoogleDrive extends Service_Base implements Service {
 		// check the response.
 		if ( is_wp_error( $response ) ) {
 			// log possible error.
-			Log::get_instance()->create( __( 'Error on request to get refreshed token.', 'external-files-in-media-library' ), '', 'error' );
+			Log::get_instance()->create( __( 'Error on request to get refreshed token.', 'external-files-from-google-drive' ), '', 'error' );
 		} else {
 			// get the http status.
 			$http_status = $response['http_response']->get_status();
@@ -1189,16 +1189,16 @@ class GoogleDrive extends Service_Base implements Service {
 		// bail if no access token is set.
 		if ( empty( $access_token ) ) {
 			// log this event.
-			Log::get_instance()->create( __( 'GoogleDrive is not connected!', 'external-files-in-media-library' ), '', 'error', 1 );
+			Log::get_instance()->create( __( 'GoogleDrive is not connected!', 'external-files-from-google-drive' ), '', 'error', 1 );
 
 			// create error.
 			$error = new WP_Error();
 			if ( empty( $config_url ) ) {
 				/* translators: %1$s will be replaced with a URL. */
-				$error->add( 'efml_service_googledrive', __( 'GoogleDrive is not connected.', 'external-files-in-media-library' ) );
+				$error->add( 'efml_service_googledrive', __( 'GoogleDrive is not connected.', 'external-files-from-google-drive' ) );
 			} else {
 				/* translators: %1$s will be replaced with a URL. */
-				$error->add( 'efml_service_googledrive', sprintf( __( 'GoogleDrive is not connected. Please create a connection to Google Drive <a href="%1$s">here</a>.', 'external-files-in-media-library' ), esc_url( $config_url ) ) );
+				$error->add( 'efml_service_googledrive', sprintf( __( 'GoogleDrive is not connected. Please create a connection to Google Drive <a href="%1$s">here</a>.', 'external-files-from-google-drive' ), esc_url( $config_url ) ) );
 			}
 
 			// add error.
@@ -1216,15 +1216,15 @@ class GoogleDrive extends Service_Base implements Service {
 			// bail if client is not a Client object.
 			if ( ! $client instanceof \Google\Client ) {
 				// log this event.
-				Log::get_instance()->create( __( 'GoogleDrive access token is not valid.', 'external-files-in-media-library' ), '', 'error', 1 );
+				Log::get_instance()->create( __( 'GoogleDrive access token is not valid.', 'external-files-from-google-drive' ), '', 'error', 1 );
 
 				// create error.
 				$error = new WP_Error();
 				if ( empty( $config_url ) ) {
-					$error->add( 'efml_service_googledrive', __( 'GoogleDrive access token appears to be no longer valid.', 'external-files-in-media-library' ), esc_url( $config_url ) );
+					$error->add( 'efml_service_googledrive', __( 'GoogleDrive access token appears to be no longer valid.', 'external-files-from-google-drive' ), esc_url( $config_url ) );
 				} else {
 					/* translators: %1$s will be replaced with a URL. */
-					$error->add( 'efml_service_googledrive', sprintf( __( 'GoogleDrive access token appears to be no longer valid. Please create a new connection to Google Drive <a href="%1$s">here</a>.', 'external-files-in-media-library' ), esc_url( $config_url ) ) );
+					$error->add( 'efml_service_googledrive', sprintf( __( 'GoogleDrive access token appears to be no longer valid. Please create a new connection to Google Drive <a href="%1$s">here</a>.', 'external-files-from-google-drive' ), esc_url( $config_url ) ) );
 				}
 
 				// add error.
@@ -1235,15 +1235,15 @@ class GoogleDrive extends Service_Base implements Service {
 			}
 		} catch ( JsonException $e ) {
 			// log this event.
-			Log::get_instance()->create( __( 'Error during check of GoogleDrive access token:', 'external-files-in-media-library' ) . ' <code>' . $e->getMessage() . '</code>', '', 'error', 1 );
+			Log::get_instance()->create( __( 'Error during check of GoogleDrive access token:', 'external-files-from-google-drive' ) . ' <code>' . $e->getMessage() . '</code>', '', 'error', 1 );
 
 			// create error.
 			$error = new WP_Error();
 			if ( empty( $config_url ) ) {
-				$error->add( 'efml_service_googledrive', __( 'GoogleDrive access token appears to be no longer valid.', 'external-files-in-media-library' ), esc_url( $config_url ) );
+				$error->add( 'efml_service_googledrive', __( 'GoogleDrive access token appears to be no longer valid.', 'external-files-from-google-drive' ), esc_url( $config_url ) );
 			} else {
 				/* translators: %1$s will be replaced with a URL. */
-				$error->add( 'efml_service_googledrive', sprintf( __( 'GoogleDrive access token appears to be no longer valid. Please create a new connection to Google Drive <a href="%1$s">here</a>.', 'external-files-in-media-library' ), esc_url( $config_url ) ) );
+				$error->add( 'efml_service_googledrive', sprintf( __( 'GoogleDrive access token appears to be no longer valid. Please create a new connection to Google Drive <a href="%1$s">here</a>.', 'external-files-from-google-drive' ), esc_url( $config_url ) ) );
 			}
 
 			// add error.
@@ -1344,7 +1344,7 @@ class GoogleDrive extends Service_Base implements Service {
 			return;
 		}
 
-		?><h3 id="efml-<?php echo esc_attr( $this->get_name() ); ?>"><?php echo esc_html__( 'GoogleDrive', 'external-files-in-media-library' ); ?></h3>
+		?><h3 id="efml-<?php echo esc_attr( $this->get_name() ); ?>"><?php echo esc_html__( 'GoogleDrive', 'external-files-from-google-drive' ); ?></h3>
 		<div class="efml-user-settings">
 			<?php
 
@@ -1354,14 +1354,14 @@ class GoogleDrive extends Service_Base implements Service {
 			// if no token is set, show hint.
 			if ( empty( $access_token ) ) {
 				?>
-				<a href="#" class="easy-dialog-for-wordpress button button-secondary" data-dialog="<?php echo esc_attr( Helper::get_json( $this->get_connect_dialog() ) ); ?>"><?php echo esc_html__( 'Connect now', 'external-files-in-media-library' ); ?></a>
+				<a href="#" class="easy-dialog-for-wordpress button button-secondary" data-dialog="<?php echo esc_attr( Helper::get_json( $this->get_connect_dialog() ) ); ?>"><?php echo esc_html__( 'Connect now', 'external-files-from-google-drive' ); ?></a>
 				<?php
 			} else {
 				?>
-				<a href="#" class="easy-dialog-for-wordpress button button-secondary" data-dialog="<?php echo esc_attr( Helper::get_json( $this->get_disconnect_dialog() ) ); ?>"><?php echo esc_html__( 'Disconnect', 'external-files-in-media-library' ); ?></a><br><br>
+				<a href="#" class="easy-dialog-for-wordpress button button-secondary" data-dialog="<?php echo esc_attr( Helper::get_json( $this->get_disconnect_dialog() ) ); ?>"><?php echo esc_html__( 'Disconnect', 'external-files-from-google-drive' ); ?></a><br><br>
 				<?php
 				/* translators: %1$s will be replaced by a date and time. */
-				echo wp_kses_post( sprintf( __( 'Created at %1$s', 'external-files-in-media-library' ), Helper::get_format_date_time( gmdate( 'Y-m-d H:i', absint( $access_token['created'] ) ) ) ) . '<br><br><a href="' . Directory_Listing::get_instance()->get_view_directory_url( $this ) . '" class="button button-secondary">' . __( 'View and import files', 'external-files-in-media-library' ) . '</a>' );
+				echo wp_kses_post( sprintf( __( 'Created at %1$s', 'external-files-from-google-drive' ), Helper::get_format_date_time( gmdate( 'Y-m-d H:i', absint( $access_token['created'] ) ) ) ) . '<br><br><a href="' . Directory_Listing::get_instance()->get_view_directory_url( $this ) . '" class="button button-secondary">' . __( 'View and import files', 'external-files-from-google-drive' ) . '</a>' );
 			}
 
 			// show settings table.
@@ -1389,22 +1389,22 @@ class GoogleDrive extends Service_Base implements Service {
 
 		return array(
 			'className' => 'efml',
-			'title'     => __( 'Connect Google Drive', 'external-files-in-media-library' ),
+			'title'     => __( 'Connect Google Drive', 'external-files-from-google-drive' ),
 			'texts'     => array(
-				'<p>' . __( 'You will be directed to a Google dialog. Follow this and confirm the approvals.', 'external-files-in-media-library' ) . '</p>',
-				'<p>' . __( 'You will also be directed to the website of the plugin developer. This is necessary to allow you to easily share your Google Drive account. No data about you will be stored in this context.', 'external-files-in-media-library' ) . '</p>',
-				'<p><strong>' . __( 'Click on the button below to connect your Google Drive with your website.', 'external-files-in-media-library' ) . '</strong></p>',
+				'<p>' . __( 'You will be directed to a Google dialog. Follow this and confirm the approvals.', 'external-files-from-google-drive' ) . '</p>',
+				'<p>' . __( 'You will also be directed to the website of the plugin developer. This is necessary to allow you to easily share your Google Drive account. No data about you will be stored in this context.', 'external-files-from-google-drive' ) . '</p>',
+				'<p><strong>' . __( 'Click on the button below to connect your Google Drive with your website.', 'external-files-from-google-drive' ) . '</strong></p>',
 			),
 			'buttons'   => array(
 				array(
 					'action'  => 'location.href="' . $url . '"',
 					'variant' => 'primary',
-					'text'    => __( 'Connect now', 'external-files-in-media-library' ),
+					'text'    => __( 'Connect now', 'external-files-from-google-drive' ),
 				),
 				array(
 					'action'  => 'closeDialog();',
 					'variant' => 'secondary',
-					'text'    => __( 'Cancel', 'external-files-in-media-library' ),
+					'text'    => __( 'Cancel', 'external-files-from-google-drive' ),
 				),
 			),
 		);
@@ -1428,21 +1428,21 @@ class GoogleDrive extends Service_Base implements Service {
 		// create the dialog.
 		return array(
 			'className' => 'efml',
-			'title'     => __( 'Disconnect Google Drive', 'external-files-in-media-library' ),
+			'title'     => __( 'Disconnect Google Drive', 'external-files-from-google-drive' ),
 			'texts'     => array(
-				'<p><strong>' . __( 'Click on the button below to disconnect your Google Drive from your website.', 'external-files-in-media-library' ) . '</strong></p>',
-				'<p>' . __( 'Files you downloaded in the media library will still be there and usable.', 'external-files-in-media-library' ) . '</p>',
+				'<p><strong>' . __( 'Click on the button below to disconnect your Google Drive from your website.', 'external-files-from-google-drive' ) . '</strong></p>',
+				'<p>' . __( 'Files you downloaded in the media library will still be there and usable.', 'external-files-from-google-drive' ) . '</p>',
 			),
 			'buttons'   => array(
 				array(
 					'action'  => 'location.href="' . $url . '"',
 					'variant' => 'primary',
-					'text'    => __( 'Disconnect now', 'external-files-in-media-library' ),
+					'text'    => __( 'Disconnect now', 'external-files-from-google-drive' ),
 				),
 				array(
 					'action'  => 'closeDialog();',
 					'variant' => 'secondary',
-					'text'    => __( 'Cancel', 'external-files-in-media-library' ),
+					'text'    => __( 'Cancel', 'external-files-from-google-drive' ),
 				),
 			),
 		);
@@ -1456,12 +1456,12 @@ class GoogleDrive extends Service_Base implements Service {
 	public function get_user_settings(): array {
 		$list = array(
 			'google_drive_show_shared'  => array(
-				'label'    => __( 'Show shared files', 'external-files-in-media-library' ),
+				'label'    => __( 'Show shared files', 'external-files-from-google-drive' ),
 				'field'    => 'checkbox',
 				'readonly' => $this->is_disabled(),
 			),
 			'google_drive_show_trashed' => array(
-				'label'    => __( 'Show trashed files', 'external-files-in-media-library' ),
+				'label'    => __( 'Show trashed files', 'external-files-from-google-drive' ),
 				'field'    => 'checkbox',
 				'readonly' => $this->is_disabled(),
 			),
@@ -1498,7 +1498,7 @@ class GoogleDrive extends Service_Base implements Service {
 
 			return false;
 		} catch ( Exception $e ) {
-			Log::get_instance()->create( __( 'Error during loading of file permissions from Google Drive. Error:', 'external-files-in-media-library' ) . ' <code>' . $e->getMessage() . '</code>', $file->getName(), 'error', 1 );
+			Log::get_instance()->create( __( 'Error during loading of file permissions from Google Drive. Error:', 'external-files-from-google-drive' ) . ' <code>' . $e->getMessage() . '</code>', $file->getName(), 'error', 1 );
 			return false;
 		}
 	}
@@ -1539,17 +1539,17 @@ class GoogleDrive extends Service_Base implements Service {
 				'access_token' => array(
 					'name'        => 'access_token',
 					'type'        => ! empty( $token ) && ! $this->is_mode( 'manually' ) ? 'hidden' : 'textarea',
-					'label'       => __( 'Access Token', 'external-files-in-media-library' ),
-					'placeholder' => __( 'Enter your access token', 'external-files-in-media-library' ),
+					'label'       => __( 'Access Token', 'external-files-from-google-drive' ),
+					'placeholder' => __( 'Enter your access token', 'external-files-from-google-drive' ),
 					'value'       => empty( $token ) ? '' : Helper::get_json( $token ),
 					'credential'  => true,
 				),
 				'folder_id'    => array(
 					'name'         => 'folder_id',
 					'type'         => 'text',
-					'label'        => __( 'Folder ID', 'external-files-in-media-library' ),
-					'description'  => __( 'You can find the folder ID in the URL when you show it in your browser.', 'external-files-in-media-library' ),
-					'placeholder'  => __( 'Enter a folder ID', 'external-files-in-media-library' ),
+					'label'        => __( 'Folder ID', 'external-files-from-google-drive' ),
+					'description'  => __( 'You can find the folder ID in the URL when you show it in your browser.', 'external-files-from-google-drive' ),
+					'placeholder'  => __( 'Enter a folder ID', 'external-files-from-google-drive' ),
 					'not_required' => true,
 				),
 			);
@@ -1580,11 +1580,11 @@ class GoogleDrive extends Service_Base implements Service {
 
 		// show other title if access token is set.
 		if ( ! empty( $token ) && ! $this->is_mode( 'manually' ) ) {
-			return __( 'Connect to your Google Drive', 'external-files-in-media-library' );
+			return __( 'Connect to your Google Drive', 'external-files-from-google-drive' );
 		}
 
 		// return default hint.
-		return __( 'Enter your access token', 'external-files-in-media-library' );
+		return __( 'Enter your access token', 'external-files-from-google-drive' );
 	}
 
 	/**
@@ -1601,17 +1601,17 @@ class GoogleDrive extends Service_Base implements Service {
 			// if access token is set in plugin settings.
 			if ( $this->is_mode( 'global' ) ) {
 				if ( ! current_user_can( 'manage_options' ) ) {
-					return __( 'An access token has already been set by an administrator in the plugin settings. Just connect for show the files.', 'external-files-in-media-library' );
+					return __( 'An access token has already been set by an administrator in the plugin settings. Just connect for show the files.', 'external-files-from-google-drive' );
 				}
 
 				/* translators: %1$s will be replaced by a URL. */
-				return sprintf( __( 'Your access token is already set <a href="%1$s">here</a>. Just connect for show the files.', 'external-files-in-media-library' ), $this->get_config_url() );
+				return sprintf( __( 'Your access token is already set <a href="%1$s">here</a>. Just connect for show the files.', 'external-files-from-google-drive' ), $this->get_config_url() );
 			}
 
 			// if access token is set per user.
 			if ( $this->is_mode( 'user' ) ) {
 				/* translators: %1$s will be replaced by a URL. */
-				return sprintf( __( 'Your access token is already set <a href="%1$s">in your profile</a>. Just connect for show the files.', 'external-files-in-media-library' ), $this->get_config_url() );
+				return sprintf( __( 'Your access token is already set <a href="%1$s">in your profile</a>. Just connect for show the files.', 'external-files-from-google-drive' ), $this->get_config_url() );
 			}
 		}
 
@@ -1625,7 +1625,7 @@ class GoogleDrive extends Service_Base implements Service {
 		);
 
 		/* translators: %1$s will be replaced by a URL. */
-		return sprintf( __( 'Get your access token <a href="%1$s">here</a>.', 'external-files-in-media-library' ), $url );
+		return sprintf( __( 'Get your access token <a href="%1$s">here</a>.', 'external-files-from-google-drive' ), $url );
 	}
 
 	/**
