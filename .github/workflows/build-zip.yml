@@ -62,17 +62,6 @@ jobs:
           search-text: '@@VersionNumber@@'
           replacement-text: ${{ github.ref_name }}
 
-      - name: Run PCP check
-        uses: wordpress/plugin-check-action@v1
-        with:
-          ignore-codes:
-            WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedConstantFound
-          include-experimental: false
-          error-severity: 7
-          warning-severity: 6
-          include-low-severity-errors: true
-        continue-on-error: true
-
       - name: Create ZIP release
         run: |
           rm ruleset.xml
