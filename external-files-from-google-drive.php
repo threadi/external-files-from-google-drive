@@ -1,6 +1,6 @@
 <?php
 /**
- * Plugin Name:       External files from Google Drive in Media Library
+ * Plugin Name:       External files from Google Drive
  * Description:       Extends External files in Media Library for usage of Google Drive.
  * Requires at least: 6.2
  * Requires PHP:      8.1

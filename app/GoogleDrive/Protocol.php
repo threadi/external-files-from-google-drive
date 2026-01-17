@@ -95,7 +95,7 @@ class Protocol extends Protocol_Base {
 		// bail if no access token is given.
 		if ( empty( $access_token ) ) {
 			// log event.
-			Log::get_instance()->create( __( 'Access token missing to connect to Google Drive!', 'external-files-in-media-library' ), esc_url( $this->get_url() ), 'error' );
+			Log::get_instance()->create( __( 'Access token missing to connect to Google Drive!', 'external-files-from-google-drive' ), esc_url( $this->get_url() ), 'error' );
 
 			// return an empty list as we could not analyse the file.
 			return array();
@@ -112,7 +112,7 @@ class Protocol extends Protocol_Base {
 		// bail if no file id could be loaded.
 		if ( empty( $file_id ) ) {
 			// log event.
-			Log::get_instance()->create( __( 'Specified URL does not contain a file ID from Google Drive!', 'external-files-in-media-library' ), esc_url( $this->get_url() ), 'error', 0, Import::get_instance()->get_identifier() );
+			Log::get_instance()->create( __( 'Specified URL does not contain a file ID from Google Drive!', 'external-files-from-google-drive' ), esc_url( $this->get_url() ), 'error', 0, Import::get_instance()->get_identifier() );
 
 			// return an empty list as we could not analyse the file.
 			return array();
@@ -120,7 +120,7 @@ class Protocol extends Protocol_Base {
 
 		// check for duplicate.
 		if ( $this->check_for_duplicate( $url ) ) {
-			Log::get_instance()->create( __( 'Specified URL already exist in your media library.', 'external-files-in-media-library' ), esc_url( $this->get_url() ), 'error', 0, Import::get_instance()->get_identifier() );
+			Log::get_instance()->create( __( 'Specified URL already exist in your media library.', 'external-files-from-google-drive' ), esc_url( $this->get_url() ), 'error', 0, Import::get_instance()->get_identifier() );
 
 			// return an empty list as we could not analyse the file.
 			return array();
@@ -133,7 +133,7 @@ class Protocol extends Protocol_Base {
 		// bail if client is not a Client object.
 		if ( ! $client instanceof \Google\Client ) {
 			// log event.
-			Log::get_instance()->create( __( 'Google Drive client could not be initiated!', 'external-files-in-media-library' ), esc_url( $this->get_url() ), 'error', 0, Import::get_instance()->get_identifier() );
+			Log::get_instance()->create( __( 'Google Drive client could not be initiated!', 'external-files-from-google-drive' ), esc_url( $this->get_url() ), 'error', 0, Import::get_instance()->get_identifier() );
 
 			// return an empty list as we could not analyse the file.
 			return array();
@@ -230,7 +230,7 @@ class Protocol extends Protocol_Base {
 			);
 		} catch ( Exception $e ) {
 			// log event.
-			Log::get_instance()->create( __( 'Google Drive client could not download the requested file! Error:', 'external-files-in-media-library' ) . ' <code>' . wp_json_encode( $e->getErrors() ) . '</code>', esc_url( $this->get_url() ), 'error' );
+			Log::get_instance()->create( __( 'Google Drive client could not download the requested file! Error:', 'external-files-from-google-drive' ) . ' <code>' . wp_json_encode( $e->getErrors() ) . '</code>', esc_url( $this->get_url() ), 'error' );
 
 			// return an empty list as we could not analyse the file.
 			return array();
@@ -271,7 +271,7 @@ class Protocol extends Protocol_Base {
 		// bail if no access token is given.
 		if ( empty( $access_token ) ) {
 			// log event.
-			Log::get_instance()->create( __( 'Access token missing to connect to Google Drive!', 'external-files-in-media-library' ), esc_url( $this->get_url() ), 'error' );
+			Log::get_instance()->create( __( 'Access token missing to connect to Google Drive!', 'external-files-from-google-drive' ), esc_url( $this->get_url() ), 'error' );
 
 			// return an empty list and to nothing more.
 			return array();
@@ -284,7 +284,7 @@ class Protocol extends Protocol_Base {
 		// bail if client is not a Client object.
 		if ( ! $client instanceof \Google\Client ) {
 			// log event.
-			Log::get_instance()->create( __( 'Google Drive client could not be initiated!', 'external-files-in-media-library' ), esc_url( $this->get_url() ), 'error' );
+			Log::get_instance()->create( __( 'Google Drive client could not be initiated!', 'external-files-from-google-drive' ), esc_url( $this->get_url() ), 'error' );
 
 			// return an empty list as we could not analyse the file.
 			return array();
@@ -305,7 +305,7 @@ class Protocol extends Protocol_Base {
 			$results = $service->files->listFiles( $query );
 		} catch ( Exception $e ) {
 			// log event.
-			Log::get_instance()->create( __( 'List of files could not be loaded from Google Drive. Error:', 'external-files-in-media-library' ), esc_url( $this->get_url() ) . ' <code>' . wp_json_encode( $e->getErrors() ) . '</code>', 'error' );
+			Log::get_instance()->create( __( 'List of files could not be loaded from Google Drive. Error:', 'external-files-from-google-drive' ), esc_url( $this->get_url() ) . ' <code>' . wp_json_encode( $e->getErrors() ) . '</code>', 'error' );
 
 			// return an empty list as we could not analyse the file.
 			return array();
@@ -341,7 +341,7 @@ class Protocol extends Protocol_Base {
 
 			// check for duplicate.
 			if ( $this->check_for_duplicate( $this->get_url() . $file_obj->getId() ) ) {
-				Log::get_instance()->create( __( 'Specified URL already exist in your media library.', 'external-files-in-media-library' ), esc_url( $this->get_url() . $file_obj->getId() ), 'error' );
+				Log::get_instance()->create( __( 'Specified URL already exist in your media library.', 'external-files-from-google-drive' ), esc_url( $this->get_url() . $file_obj->getId() ), 'error' );
 
 				continue;
 			}
@@ -351,7 +351,7 @@ class Protocol extends Protocol_Base {
 				$response = $service->files->get( $file_obj->getId(), array( 'alt' => 'media' ) );
 			} catch ( Exception $e ) {
 				// log event.
-				Log::get_instance()->create( __( 'Google Drive client could not download a requested file during mass-import! Error:', 'external-files-in-media-library' ) . ' <code>' . wp_json_encode( $e->getErrors() ) . '</code><br>' . __( 'Requested file:', 'external-files-in-media-library' ) . ' <code>' . wp_json_encode( $file_obj ) . '</code>', esc_url( $this->get_url() . $file_obj->getId() ), 'error' );
+				Log::get_instance()->create( __( 'Google Drive client could not download a requested file during mass-import! Error:', 'external-files-from-google-drive' ) . ' <code>' . wp_json_encode( $e->getErrors() ) . '</code><br>' . __( 'Requested file:', 'external-files-from-google-drive' ) . ' <code>' . wp_json_encode( $file_obj ) . '</code>', esc_url( $this->get_url() . $file_obj->getId() ), 'error' );
 
 				continue;
 			}
@@ -377,7 +377,7 @@ class Protocol extends Protocol_Base {
 				// create the error entry.
 				$error_obj = new Url_Result();
 				/* translators: %1$s will be replaced by a URL. */
-				$error_obj->set_result_text( sprintf( __( 'Error occurred during requesting this file. Check the <a href="%1$s" target="_blank">log</a> for detailed information.', 'external-files-in-media-library' ), Helper::get_log_url( $this->get_url() ) ) );
+				$error_obj->set_result_text( sprintf( __( 'Error occurred during requesting this file. Check the <a href="%1$s" target="_blank">log</a> for detailed information.', 'external-files-from-google-drive' ), Helper::get_log_url( $this->get_url() ) ) );
 				$error_obj->set_url( $this->get_url() );
 				$error_obj->set_error( true );
 
@@ -385,7 +385,7 @@ class Protocol extends Protocol_Base {
 				Results::get_instance()->add( $error_obj );
 
 				// add log entry.
-				Log::get_instance()->create( __( 'The following error occurred:', 'external-files-in-media-library' ) . ' <code>' . $e->getMessage() . '</code>', $this->get_url(), 'error' );
+				Log::get_instance()->create( __( 'The following error occurred:', 'external-files-from-google-drive' ) . ' <code>' . $e->getMessage() . '</code>', $this->get_url(), 'error' );
 
 				// do nothing more.
 				return array();
@@ -436,7 +436,7 @@ class Protocol extends Protocol_Base {
 
 		// update title for progress.
 		/* translators: %1$s will be replaced by the URL which is imported. */
-		update_option( 'eml_import_title_' . $user_id, sprintf( __( 'Get URL %1$s from Google Drive', 'external-files-in-media-library' ), esc_html( Helper::shorten_url( $file_data->getName() ) ) ) );
+		update_option( 'eml_import_title_' . $user_id, sprintf( __( 'Get URL %1$s from Google Drive', 'external-files-from-google-drive' ), esc_html( Helper::shorten_url( $file_data->getName() ) ) ) );
 
 		// update counter for URLs.
 		update_option( 'eml_import_url_count_' . $user_id, absint( get_option( 'eml_import_url_count_' . $user_id, 0 ) ) + 1 );
@@ -462,7 +462,7 @@ class Protocol extends Protocol_Base {
 			// create the error entry.
 			$error_obj = new Url_Result();
 			/* translators: %1$s will be replaced by a URL. */
-			$error_obj->set_result_text( sprintf( __( 'Error occurred during requesting this file. Check the <a href="%1$s" target="_blank">log</a> for detailed information.', 'external-files-in-media-library' ), Helper::get_log_url( $this->get_url() ) ) );
+			$error_obj->set_result_text( sprintf( __( 'Error occurred during requesting this file. Check the <a href="%1$s" target="_blank">log</a> for detailed information.', 'external-files-from-google-drive' ), Helper::get_log_url( $this->get_url() ) ) );
 			$error_obj->set_url( $this->get_url() );
 			$error_obj->set_error( true );
 
@@ -470,7 +470,7 @@ class Protocol extends Protocol_Base {
 			Results::get_instance()->add( $error_obj );
 
 			// add log entry.
-			Log::get_instance()->create( __( 'The following error occurred:', 'external-files-in-media-library' ) . ' <code>' . $e->getMessage() . '</code>', $this->get_url(), 'error' );
+			Log::get_instance()->create( __( 'The following error occurred:', 'external-files-from-google-drive' ) . ' <code>' . $e->getMessage() . '</code>', $this->get_url(), 'error' );
 
 			// do nothing more.
 			return array();
