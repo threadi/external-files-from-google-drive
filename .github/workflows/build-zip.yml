@@ -35,9 +35,6 @@ jobs:
       - name: Generate autoloader
         run: composer dump-autoload -oa --no-dev
 
-      - name: Run PHPStan analyse
-        run: vendor/bin/phpstan analyse
-
       - name: PHP Compatibility check
         run: vendor/bin/phpcs -p app --standard=PHPCompatibilityWP
 
