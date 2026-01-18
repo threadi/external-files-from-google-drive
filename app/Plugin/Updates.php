@@ -151,8 +151,7 @@ class Updates {
 					// add it to the data object.
 					$data->response[ plugin_basename( EFMLGD_PLUGIN ) ] = $res; // @phpstan-ignore property.notFound
 				}
-			}
-			else {
+			} else {
 				// set info about no available update.
 				$res = (object) array(
 					'id'            => plugin_basename( EFMLGD_PLUGIN ),
