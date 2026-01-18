@@ -49,6 +49,7 @@
     },
     "require": {
         "php": "^8.1",
-        "google/apiclient": "^2.18"
+        "google/apiclient": "^2.18",
+        "afragen/git-updater-lite": "^2"
     }
 }
