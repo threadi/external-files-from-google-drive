@@ -134,8 +134,8 @@ class Updates {
 			// only return a response if the new version number is higher than the current version.
 			if ( version_compare( $new_version_number, EFMLGD_PLUGIN_VERSION, '>' ) ) {
 				foreach ( $file->assets as $asset ) {
-					// bail if this asset is not a ZIP file.
-					if ( 'application/zip' !== $asset->content_type ) { // @phpstan-ignore property.notFound
+					// bail if this asset is not a ZIP file or entry already exist.
+					if ( 'application/zip' !== $asset->content_type || ! empty( $data->response[ plugin_basename( EFMLGD_PLUGIN ) ] ) ) { // @phpstan-ignore property.notFound
 						continue;
 					}
 
@@ -150,8 +150,25 @@ class Updates {
 
 					// add it to the data object.
 					$data->response[ plugin_basename( EFMLGD_PLUGIN ) ] = $res; // @phpstan-ignore property.notFound
-					$data->no_update[ $res->plugin ]                    = $res; // @phpstan-ignore property.notFound
 				}
+			}
+			else {
+				// set info about no available update.
+				$res = (object) array(
+					'id'            => plugin_basename( EFMLGD_PLUGIN ),
+					'slug'          => $this->github_repository,
+					'plugin'        => plugin_basename( EFMLGD_PLUGIN ),
+					'new_version'   => EFMLGD_PLUGIN_VERSION,
+					'url'           => '',
+					'package'       => '',
+					'icons'         => array(),
+					'banners'       => array(),
+					'banners_rtl'   => array(),
+					'tested'        => '',
+					'requires_php'  => '',
+					'compatibility' => new stdClass(),
+				);
+				$data->no_update[ plugin_basename( EFMLGD_PLUGIN ) ] = $res; // @phpstan-ignore property.notFound
 			}
 		}
 
