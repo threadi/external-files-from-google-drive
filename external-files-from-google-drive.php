@@ -23,6 +23,11 @@ if ( PHP_VERSION_ID < 80100 ) { // @phpstan-ignore if.alwaysFalse,smaller.always
 	return;
 }
 
+// bail if "External files in Media Library" is not active.
+if( ! in_array( 'external-files-in-media-library/external-files-in-media-library.php', (array) get_option( 'active_plugins', array() ), true ) ) {
+	return;
+}
+
 use ExternalFilesFromGoogleDrive\Plugin\Init;
 
 // get plugin-path.

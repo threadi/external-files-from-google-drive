@@ -35,6 +35,10 @@ jobs:
       - name: Generate autoloader
         run: composer dump-autoload -oa --no-dev
 
+      - name: Generate translation files
+        run: |
+          wp i18n make-php languages
+
       - name: PHP Compatibility check
         run: vendor/bin/phpcs -p app --standard=PHPCompatibilityWP
 
