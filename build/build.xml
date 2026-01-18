@@ -27,9 +27,15 @@
             <replacefilter token="@@VersionNumber@@" value="${plugin.version}" />
         </replace>
 
-        <delete file="${build.dir}/readme-release.php"/>
+        <delete file="${build.dir}/readme-release.txt"/>
         <copy file="${src.dir}/readme.txt" tofile="${src.dir}/readme-release.txt"/>
         <replace file="${src.dir}/readme-release.txt">
+            <replacefilter token="@@VersionNumber@@" value="${plugin.version}" />
+        </replace>
+
+        <delete file="${build.dir}/uninstall-release.php"/>
+        <copy file="${src.dir}/uninstall.php" tofile="${src.dir}/uninstall-release.php"/>
+        <replace file="${src.dir}/uninstall-release.php">
             <replacefilter token="@@VersionNumber@@" value="${plugin.version}" />
         </replace>
     </target>
@@ -116,12 +122,14 @@
             <zipfileset dir="${src.dir}/vendor/symfony" prefix="${plugin.slug}/vendor/symfony" />
             <zipfileset dir="${src.dir}/vendor/symfony" prefix="${plugin.slug}/vendor/afragen" />
             <zipfileset dir="${src.dir}" includes="readme-release.txt" fullpath="${plugin.slug}/readme.txt" />
+            <zipfileset dir="${src.dir}" includes="uninstall-release.php" fullpath="${plugin.slug}/uninstall.php" />
             <zipfileset dir="${src.dir}" includes="uninstall.php,composer.json" prefix="${plugin.slug}" />
             <zipfileset dir="${src.dir}" includes="${plugin.slug}-release.php" fullpath="${plugin.slug}/${plugin.slug}.php" />
         </zip>
         <antcall target="autoloader-generation-dev" />
         <delete file="${src.dir}/${plugin.slug}-release.php"/>
         <delete file="${src.dir}/readme-release.txt"/>
+        <delete file="${src.dir}/uninstall-release.php"/>
     </target>
 
     <target name="help">

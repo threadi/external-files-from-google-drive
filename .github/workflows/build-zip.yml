@@ -61,6 +61,13 @@ jobs:
           search-text: '@@VersionNumber@@'
           replacement-text: ${{ github.ref_name }}
 
+      - name: Set version number 3
+        uses: richardrigutins/replace-in-files@v2
+        with:
+          files: 'uninstall.php'
+          search-text: '@@VersionNumber@@'
+          replacement-text: ${{ github.ref_name }}
+
       - name: Create ZIP release
         run: |
           rm ruleset.xml
