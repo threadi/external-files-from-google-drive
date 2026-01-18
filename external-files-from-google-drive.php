@@ -33,6 +33,9 @@ use ExternalFilesFromGoogleDrive\Plugin\Init;
 // get plugin-path.
 const EFMLGD_PLUGIN = __FILE__;
 
+// set the version.
+const EFMLGD_PLUGIN_VERSION = '@@VersionNumber@@';
+
 // URL of the service URL for Google OAuth.
 const EFML_GOOGLE_OAUTH_SERVICE_URL = 'https://www.thomaszwirner.de/google-oauth-service/';
 
