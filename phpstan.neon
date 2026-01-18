@@ -9,6 +9,7 @@ parameters:
     - "#add_error#"
     - "#get_name#"
     - "#get_url#"
+    - "#easyDirectoryListingForWordPress#"
   earlyTerminatingFunctionCalls:
     - wp_send_json
   paths:

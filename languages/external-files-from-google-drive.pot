@@ -1,0 +1,287 @@
+# Copyright (C) 2026 Thomas Zwirner
+# This file is distributed under the GPL-2.0-or-later.
+msgid ""
+msgstr ""
+"Project-Id-Version: External files from Google Drive in Media Library @@VersionNumber@@\n"
+"Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/external-files-from-google-drive\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"POT-Creation-Date: 2026-01-18T15:46:15+01:00\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"X-Generator: WP-CLI 2.12.0\n"
+"X-Domain: external-files-from-google-drive\n"
+
+#. Plugin Name of the plugin
+#: external-files-from-google-drive.php
+msgid "External files from Google Drive in Media Library"
+msgstr ""
+
+#. Description of the plugin
+#: external-files-from-google-drive.php
+msgid "Extends External files in Media Library for usage of Google Drive."
+msgstr ""
+
+#. Author of the plugin
+#: external-files-from-google-drive.php
+msgid "Thomas Zwirner"
+msgstr ""
+
+#. Author URI of the plugin
+#: external-files-from-google-drive.php
+msgid "https://www.thomaszwirner.de"
+msgstr ""
+
+#: app/GoogleDrive.php:130
+msgid "Choose file(s) from your Google Drive"
+msgstr ""
+
+#: app/GoogleDrive.php:212
+#: app/GoogleDrive.php:219
+msgid "API connection"
+msgstr ""
+
+#: app/GoogleDrive.php:213
+#: app/GoogleDrive.php:1357
+#: app/GoogleDrive.php:1402
+msgid "Connect now"
+msgstr ""
+
+#: app/GoogleDrive.php:220
+#: app/GoogleDrive.php:1361
+msgid "Disconnect"
+msgstr ""
+
+#. translators: %1$s will be replaced by a date and time.
+#: app/GoogleDrive.php:225
+#: app/GoogleDrive.php:1364
+#, php-format
+msgid "Created at %1$s"
+msgstr ""
+
+#. translators: %1$s will be replaced by a date and time.
+#: app/GoogleDrive.php:225
+#: app/GoogleDrive.php:1364
+msgid "View and import files"
+msgstr ""
+
+#: app/GoogleDrive.php:239
+#: app/GoogleDrive.php:1459
+msgid "Show shared files"
+msgstr ""
+
+#: app/GoogleDrive.php:250
+#: app/GoogleDrive.php:1464
+msgid "Show trashed files"
+msgstr ""
+
+#: app/GoogleDrive.php:262
+msgid "Hint"
+msgstr ""
+
+#. translators: %1$s will be replaced by a URL.
+#: app/GoogleDrive.php:264
+#, php-format
+msgid "Each user will find its settings in his own <a href=\"%1$s\">user profile</a>."
+msgstr ""
+
+#: app/GoogleDrive.php:274
+msgid "Max. files to load per iteration"
+msgstr ""
+
+#: app/GoogleDrive.php:275
+msgid "This value specifies how many files should be loaded during a directory import. The higher the value, the greater the likelihood of timeouts during import."
+msgstr ""
+
+#: app/GoogleDrive.php:380
+msgid "New Google Drive access token saved for global usage."
+msgstr ""
+
+#. translators: %1$s will be replaced by the username.
+#: app/GoogleDrive.php:406
+#, php-format
+msgid "New Google Drive access token saved for user %1$s."
+msgstr ""
+
+#: app/GoogleDrive.php:487
+msgid "Given GoogleDrive-URL could not be used as external file in websites."
+msgstr ""
+
+#: app/GoogleDrive.php:700
+msgid "Got error from Google OAuth:"
+msgstr ""
+
+#: app/GoogleDrive.php:768
+msgid "List of files could not be loaded from Google Drive. Error:"
+msgstr ""
+
+#. translators: %1$s will be replaced by a URL.
+#: app/GoogleDrive.php:773
+#, php-format
+msgid "List of files could not be loaded from Google Drive. Check the <a href=\"%1$s\" target=\"_blank\">log</a> for detailed information."
+msgstr ""
+
+#: app/GoogleDrive.php:876
+msgid "Loading folder data results in an error:"
+msgstr ""
+
+#: app/GoogleDrive.php:926
+msgid "Import"
+msgstr ""
+
+#: app/GoogleDrive.php:928
+msgid "File-type is not supported"
+msgstr ""
+
+#: app/GoogleDrive.php:946
+msgid "Go to Google Drive"
+msgstr ""
+
+#: app/GoogleDrive.php:950
+msgid "Settings"
+msgstr ""
+
+#: app/GoogleDrive.php:954
+msgid "Import active directory"
+msgstr ""
+
+#: app/GoogleDrive.php:958
+msgid "Save active directory as your external source"
+msgstr ""
+
+#: app/GoogleDrive.php:1018
+msgid "Connect"
+msgstr ""
+
+#: app/GoogleDrive.php:1141
+msgid "Error on request to get refreshed token."
+msgstr ""
+
+#: app/GoogleDrive.php:1192
+msgid "GoogleDrive is not connected!"
+msgstr ""
+
+#. translators: %1$s will be replaced with a URL.
+#: app/GoogleDrive.php:1198
+msgid "GoogleDrive is not connected."
+msgstr ""
+
+#. translators: %1$s will be replaced with a URL.
+#: app/GoogleDrive.php:1201
+#, php-format
+msgid "GoogleDrive is not connected. Please create a connection to Google Drive <a href=\"%1$s\">here</a>."
+msgstr ""
+
+#: app/GoogleDrive.php:1219
+msgid "GoogleDrive access token is not valid."
+msgstr ""
+
+#: app/GoogleDrive.php:1224
+#: app/GoogleDrive.php:1243
+msgid "GoogleDrive access token appears to be no longer valid."
+msgstr ""
+
+#. translators: %1$s will be replaced with a URL.
+#: app/GoogleDrive.php:1227
+#: app/GoogleDrive.php:1246
+#, php-format
+msgid "GoogleDrive access token appears to be no longer valid. Please create a new connection to Google Drive <a href=\"%1$s\">here</a>."
+msgstr ""
+
+#: app/GoogleDrive.php:1238
+msgid "Error during check of GoogleDrive access token:"
+msgstr ""
+
+#: app/GoogleDrive.php:1347
+msgid "GoogleDrive"
+msgstr ""
+
+#: app/GoogleDrive.php:1392
+msgid "Connect Google Drive"
+msgstr ""
+
+#: app/GoogleDrive.php:1394
+msgid "You will be directed to a Google dialog. Follow this and confirm the approvals."
+msgstr ""
+
+#: app/GoogleDrive.php:1395
+msgid "You will also be directed to the website of the plugin developer. This is necessary to allow you to easily share your Google Drive account. No data about you will be stored in this context."
+msgstr ""
+
+#: app/GoogleDrive.php:1396
+msgid "Click on the button below to connect your Google Drive with your website."
+msgstr ""
+
+#: app/GoogleDrive.php:1407
+#: app/GoogleDrive.php:1445
+msgid "Cancel"
+msgstr ""
+
+#: app/GoogleDrive.php:1431
+msgid "Disconnect Google Drive"
+msgstr ""
+
+#: app/GoogleDrive.php:1433
+msgid "Click on the button below to disconnect your Google Drive from your website."
+msgstr ""
+
+#: app/GoogleDrive.php:1434
+msgid "Files you downloaded in the media library will still be there and usable."
+msgstr ""
+
+#: app/GoogleDrive.php:1440
+msgid "Disconnect now"
+msgstr ""
+
+#: app/GoogleDrive.php:1501
+msgid "Error during loading of file permissions from Google Drive. Error:"
+msgstr ""
+
+#: app/GoogleDrive.php:1542
+msgid "Access Token"
+msgstr ""
+
+#: app/GoogleDrive.php:1543
+#: app/GoogleDrive.php:1587
+msgid "Enter your access token"
+msgstr ""
+
+#: app/GoogleDrive.php:1550
+msgid "Folder ID"
+msgstr ""
+
+#: app/GoogleDrive.php:1551
+msgid "You can find the folder ID in the URL when you show it in your browser."
+msgstr ""
+
+#: app/GoogleDrive.php:1552
+msgid "Enter a folder ID"
+msgstr ""
+
+#: app/GoogleDrive.php:1583
+msgid "Connect to your Google Drive"
+msgstr ""
+
+#: app/GoogleDrive.php:1604
+msgid "An access token has already been set by an administrator in the plugin settings. Just connect for show the files."
+msgstr ""
+
+#. translators: %1$s will be replaced by a URL.
+#: app/GoogleDrive.php:1608
+#, php-format
+msgid "Your access token is already set <a href=\"%1$s\">here</a>. Just connect for show the files."
+msgstr ""
+
+#. translators: %1$s will be replaced by a URL.
+#: app/GoogleDrive.php:1614
+#, php-format
+msgid "Your access token is already set <a href=\"%1$s\">in your profile</a>. Just connect for show the files."
+msgstr ""
+
+#. translators: %1$s will be replaced by a URL.
+#: app/GoogleDrive.php:1628
+#, php-format
+msgid "Get your access token <a href=\"%1$s\">here</a>."
+msgstr ""

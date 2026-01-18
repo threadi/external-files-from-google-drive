@@ -1,4 +1,4 @@
-=== External files from Google Drive ===
+=== External files from Google Drive in Media Library ===
 Contributors: threadi
 Tags: external files, media library, google drive
 Requires at least: 6.2
@@ -9,11 +9,11 @@ License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 Stable tag: @@VersionNumber@@
 
-Add the possibility to import, export and synchronise files from and to Google Drive. Your need the plugin Externale Files in Media Library to use it.
+Add the possibility to import, export and synchronise files from and to Google Drive. Your need the plugin "Externale Files in Media Library" to use it.
 
 == Description ==
 
-Add the possibility to import, export and synchronise files from and to Google Drive. Your need the plugin Externale Files in Media Library to use it.
+Add the possibility to import, export and synchronise files from and to Google Drive. Your need the plugin "Externale Files in Media Library" to use it.
 
 == Repository, documentation and reliability ==
 
@@ -42,4 +42,4 @@ Each release of this plugin will only be published if it fulfills the following 
 
 - Initial release
 
-[older changes](https://github.com/threadi/external-files-from-google-cloud-storage/blob/master/changelog.md)
+[older changes](https://github.com/threadi/external-files-from-google-drive/blob/master/changelog.md)
