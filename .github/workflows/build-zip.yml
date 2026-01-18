@@ -24,7 +24,6 @@ jobs:
           rm -fr build
           rm -fr releases
           rm -fr svn
-          rm -fr languages
           rm .gitignore
           rm .editorconfig
           rm changelog.md
