@@ -56,6 +56,9 @@ class Init {
 	 * @return void
 	 */
 	public function init(): void {
+		// init update handling.
+		Updates::get_instance()->init();
+
 		// plugin-action.
 		register_activation_hook( EFMLGD_PLUGIN, array( $this, 'activation' ) );
 
