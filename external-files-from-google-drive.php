@@ -25,6 +25,9 @@ if ( PHP_VERSION_ID < 80100 ) { // @phpstan-ignore if.alwaysFalse,smaller.always
 
 use ExternalFilesFromGoogleDrive\Plugin\Init;
 
+// get plugin-path.
+const EFMLGD_PLUGIN = __FILE__;
+
 // URL of the service URL for Google OAuth.
 const EFML_GOOGLE_OAUTH_SERVICE_URL = 'https://www.thomaszwirner.de/google-oauth-service/';
 
