@@ -2,7 +2,7 @@
 /**
  * Tasks to run during uninstallation of this plugin.
  *
- * @package external-files-in-media-library
+ * @package external-files-from-google-drive
  */
 
 // prevent direct access.

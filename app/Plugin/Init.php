@@ -61,6 +61,19 @@ class Init {
 
 		// add the service.
 		add_filter( 'efml_services_support', array( $this, 'add_service' ) );
+
+		// misc.
+		add_action( 'init', array( $this, 'init_languages' ) );
+	}
+
+	/**
+	 * Add the support for languages.
+	 *
+	 * @return void
+	 */
+	public function init_languages(): void {
+		// load language files for pro.
+		load_plugin_textdomain( 'external-files-from-google-drive', false, dirname( plugin_basename( EFMLGD_PLUGIN ) ) . '/languages' );
 	}
 
 	/**

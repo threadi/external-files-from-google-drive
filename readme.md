@@ -53,6 +53,10 @@ Run in the main directory:
 2. Go to "File" > "Save".
 3. Upload the generated .mo-file and the .po-file to the plugin-folder languages/
 
+### generate optimized PHP-file
+
+`wp i18n make-php languages`
+
 ## Check for WordPress Coding Standards
 
 ### Initialize
