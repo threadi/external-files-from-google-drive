@@ -625,7 +625,7 @@ class GoogleDrive extends Service_Base implements Service {
 		// bail if params are empty.
 		if ( empty( $params ) ) {
 			// redirect user.
-			wp_safe_redirect( (string)wp_get_referer() );
+			wp_safe_redirect( (string) wp_get_referer() );
 			exit;
 		}
 
@@ -647,7 +647,7 @@ class GoogleDrive extends Service_Base implements Service {
 		$this->delete_access_token();
 
 		// redirect user.
-		wp_safe_redirect( (string)wp_get_referer() );
+		wp_safe_redirect( (string) wp_get_referer() );
 		exit;
 	}
 
