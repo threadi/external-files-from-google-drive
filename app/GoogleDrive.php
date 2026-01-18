@@ -127,7 +127,7 @@ class GoogleDrive extends Service_Base implements Service {
 		}
 
 		// set title.
-		$this->title = __( 'Choose file(s) from your Google Drive', 'external-files-from-google-drive' );
+		$this->title = __( 'Choose file(s) from your Google Drive', 'external-files-from-google-drive' ); // @phpstan-ignore property.notFound
 
 		// use hooks.
 		add_filter( 'query_vars', array( $this, 'set_query_vars' ) );
@@ -625,7 +625,7 @@ class GoogleDrive extends Service_Base implements Service {
 		// bail if params are empty.
 		if ( empty( $params ) ) {
 			// redirect user.
-			wp_safe_redirect( wp_get_referer() );
+			wp_safe_redirect( (string)wp_get_referer() );
 			exit;
 		}
 
@@ -647,7 +647,7 @@ class GoogleDrive extends Service_Base implements Service {
 		$this->delete_access_token();
 
 		// redirect user.
-		wp_safe_redirect( wp_get_referer() );
+		wp_safe_redirect( (string)wp_get_referer() );
 		exit;
 	}
 
@@ -1535,7 +1535,7 @@ class GoogleDrive extends Service_Base implements Service {
 			$token = $this->get_access_token();
 
 			// set the fields.
-			$this->fields = array(
+			$this->fields = array( // @phpstan-ignore property.notFound
 				'access_token' => array(
 					'name'        => 'access_token',
 					'type'        => ! empty( $token ) && ! $this->is_mode( 'manually' ) ? 'hidden' : 'textarea',

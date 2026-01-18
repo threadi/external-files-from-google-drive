@@ -1,8 +1,8 @@
-# External files from Google Drive
+# External files from Google Drive in Media Library
 
 ## About
 
-This repository provides the features of the WordPress plugin _External Files from Google Drive_. The repository is used as a basis for deploying the plugin to the WordPress repository. It is not intended to run as a plugin as it is, even if that is possible for development.
+This repository provides the features of the WordPress plugin _External Files from Google Drive in Media Library_. The repository is used as a basis for deploying the plugin to the WordPress repository. It is not intended to run as a plugin as it is, even if that is possible for development.
 
 ## Hint
 
