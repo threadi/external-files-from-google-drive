@@ -120,7 +120,7 @@
             <zipfileset dir="${src.dir}/vendor/ralouphie" prefix="${plugin.slug}/vendor/ralouphie" />
             <zipfileset dir="${src.dir}/vendor/phpseclib" prefix="${plugin.slug}/vendor/phpseclib" />
             <zipfileset dir="${src.dir}/vendor/symfony" prefix="${plugin.slug}/vendor/symfony" />
-            <zipfileset dir="${src.dir}/vendor/symfony" prefix="${plugin.slug}/vendor/afragen" />
+            <zipfileset dir="${src.dir}/vendor/afragen" prefix="${plugin.slug}/vendor/afragen" />
             <zipfileset dir="${src.dir}" includes="readme-release.txt" fullpath="${plugin.slug}/readme.txt" />
             <zipfileset dir="${src.dir}" includes="uninstall-release.php" fullpath="${plugin.slug}/uninstall.php" />
             <zipfileset dir="${src.dir}" includes="uninstall.php,composer.json" prefix="${plugin.slug}" />

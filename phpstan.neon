@@ -10,6 +10,7 @@ parameters:
     - "#get_name#"
     - "#get_url#"
     - "#easyDirectoryListingForWordPress#"
+    - "#EFML_PLUGIN#"
   earlyTerminatingFunctionCalls:
     - wp_send_json
   paths:

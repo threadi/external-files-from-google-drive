@@ -73,7 +73,7 @@ Run in the main directory:
 
 ## Generate documentation
 
-`vendor/bin/wp-documentor parse app --format=markdown --output=docs/hooks.md --prefix=emlgcs_`
+`vendor/bin/wp-documentor parse app --format=markdown --output=docs/hooks.md --prefix=emlgd_`
 
 ## Check for WordPress VIP Coding Standards
 
