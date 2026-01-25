@@ -4,9 +4,10 @@
 
 This repository provides the features of the WordPress plugin _External Files from Google Drive in Media Library_. The repository is used as a basis for deploying the plugin to the WordPress repository. It is not intended to run as a plugin as it is, even if that is possible for development.
 
-## Hint
+## Hints
 
-You will need the plugin _External Files in Media Library_ to run this plugin.
+* You will need the plugin _External Files in Media Library_ to run this plugin.
+* This plugin adds the official library "google-api-php-client", that is using the Apache License. This is not kompatible with the GPL License the WordPress Repository requires.
 
 ## Usage
 
@@ -73,7 +74,7 @@ Run in the main directory:
 
 ## Generate documentation
 
-`vendor/bin/wp-documentor parse app --format=markdown --output=docs/hooks.md --prefix=emlgcs_`
+`vendor/bin/wp-documentor parse app --format=markdown --output=docs/hooks.md --prefix=emlgd_`
 
 ## Check for WordPress VIP Coding Standards
 
