@@ -29,7 +29,7 @@ use ExternalFilesFromGoogleDrive\Plugin\Init;
 require_once __DIR__ . '/vendor/autoload.php';
 
 // bail if "External files in Media Library" is not active.
-if ( ! Init::get_instance()->is_parent_plugin_active() ) return; {
+if ( ! Init::get_instance()->is_parent_plugin_active() ) {
 	return;
 }
 

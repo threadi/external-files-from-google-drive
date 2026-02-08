@@ -84,7 +84,7 @@ class Export extends Export_Base {
 		// bail if file path could not be loaded.
 		if ( ! is_string( $file_path ) ) {
 			// log this event.
-			Log::get_instance()->create( __( 'Could not load file path for given attachment ID.', 'external-files-from-google-drive' ), $target, 'error' );
+			Log::get_instance()->create( __( 'Could not load file path for given attachment ID.', 'external-files-in-media-library' ), $target, 'error' );
 
 			// do nothing more.
 			return false;
@@ -157,7 +157,7 @@ class Export extends Export_Base {
 			// bail if result code is not 200.
 			if ( 200 !== $media->getHttpResultCode() ) {
 				// log this event.
-				Log::get_instance()->create( __( 'File could not be uploaded to Google Drive. HTTP result code was:', 'external-files-from-google-drive' ) . ' <code>' . $media->getHttpResultCode() . '</code>', $target, 'error' );
+				Log::get_instance()->create( __( 'File could not be uploaded to Google Drive. HTTP result code was:', 'external-files-in-media-library' ) . ' <code>' . $media->getHttpResultCode() . '</code>', $target, 'error' );
 
 				// do nothing more.
 				return false;
@@ -178,7 +178,7 @@ class Export extends Export_Base {
 			return $google_drive_object->get_public_url_for_file_id( $file_id );
 		} catch ( Exception $e ) {
 			// log this event.
-			Log::get_instance()->create( __( 'File could not be uploaded to Google Drive. Error:', 'external-files-from-google-drive' ) . ' <code>' . $e->getMessage() . '</code>', $target, 'error' );
+			Log::get_instance()->create( __( 'File could not be uploaded to Google Drive. Error:', 'external-files-in-media-library' ) . ' <code>' . $e->getMessage() . '</code>', $target, 'error' );
 
 			// return false as we do not get anything.
 			return false;
@@ -229,7 +229,7 @@ class Export extends Export_Base {
 			return true;
 		} catch ( Exception $e ) {
 			// log this event.
-			Log::get_instance()->create( __( 'File could not be delete from Google Drive. Error:', 'external-files-from-google-drive' ) . ' <code>' . $e->getMessage() . '</code>', $url, 'error' );
+			Log::get_instance()->create( __( 'File could not be delete from Google Drive. Error:', 'external-files-in-media-library' ) . ' <code>' . $e->getMessage() . '</code>', $url, 'error' );
 
 			// return false as we do not get anything.
 			return false;
