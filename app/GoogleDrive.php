@@ -1636,4 +1636,13 @@ class GoogleDrive extends Service_Base implements Service {
 	public function get_export_object(): Export_Base|false {
 		return Export::get_instance();
 	}
+
+	/**
+	 * Return the default roles to use for this service.
+	 *
+	 * @return array<int,string>
+	 */
+	public function get_default_roles(): array {
+		return array( 'administrator', 'editor' );
+	}
 }

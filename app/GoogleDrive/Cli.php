@@ -36,12 +36,12 @@ class Cli {
 
 		// bail if no access token is available.
 		if ( empty( $access_tokens ) ) {
-			\WP_CLI::error( __( 'No access tokens found for any user!', 'external-files-from-google-drive' ) );
+			\WP_CLI::error( __( 'No access tokens found for any user!', 'external-files-in-media-library' ) );
 		}
 
 		// bail if access token is not an array.
 		if ( ! is_array( $access_tokens ) ) {
-			\WP_CLI::error( __( 'Wrong format for access tokens!', 'external-files-from-google-drive' ) );
+			\WP_CLI::error( __( 'Wrong format for access tokens!', 'external-files-in-media-library' ) );
 		}
 
 		// collect the results.
@@ -55,7 +55,7 @@ class Cli {
 			// bail if user could not be found.
 			if ( ! $user instanceof WP_User ) {
 				/* translators: %1$s will be replaced by the User ID. */
-				$check_results[] = sprintf( __( 'User with ID %1$d could not be found!', 'external-files-from-google-drive' ), $user_id );
+				$check_results[] = sprintf( __( 'User with ID %1$d could not be found!', 'external-files-in-media-library' ), $user_id );
 				continue;
 			}
 
@@ -84,7 +84,7 @@ class Cli {
 			} catch ( Exception $e ) {
 				// log event.
 				/* translators: %1$s will be replaced by the username. */
-				Log::get_instance()->create( sprintf( __( 'List of files could not be loaded from Google Drive for user %1$s. Error:', 'external-files-from-google-drive' ), $user->display_name ) . ' <code>' . wp_json_encode( $e->getErrors() ) . '</code>', '', 'error' );
+				Log::get_instance()->create( sprintf( __( 'List of files could not be loaded from Google Drive for user %1$s. Error:', 'external-files-in-media-library' ), $user->display_name ) . ' <code>' . wp_json_encode( $e->getErrors() ) . '</code>', '', 'error' );
 
 				// do not continue with this user.
 				continue;
@@ -96,12 +96,12 @@ class Cli {
 			// show hint if no files could be loaded.
 			if ( empty( $files ) ) {
 				/* translators: %1$s will be replaced by the username. */
-				$check_results[] = sprintf( __( 'No files found for user %1$s!', 'external-files-from-google-drive' ), $user->display_name );
+				$check_results[] = sprintf( __( 'No files found for user %1$s!', 'external-files-in-media-library' ), $user->display_name );
 			}
 
 			// show hint if files could be loaded.
 			/* translators: %1$d will be replaced by a number. */
-			$check_results[] = sprintf( __( '%1$d files found for user %2$s.', 'external-files-from-google-drive' ), count( $files ), $user->display_name );
+			$check_results[] = sprintf( __( '%1$d files found for user %2$s.', 'external-files-in-media-library' ), count( $files ), $user->display_name );
 		}
 
 		// show results.
@@ -123,7 +123,7 @@ class Cli {
 
 		// bail if no access token is available.
 		if ( empty( $access_tokens ) ) {
-			\WP_CLI::error( __( 'No access token found for any user!', 'external-files-from-google-drive' ) );
+			\WP_CLI::error( __( 'No access token found for any user!', 'external-files-in-media-library' ) );
 		}
 
 		// collect the results.
@@ -137,7 +137,7 @@ class Cli {
 			// bail if user could not be found.
 			if ( ! $user instanceof WP_User ) {
 				/* translators: %1$s will be replaced by the User ID. */
-				$check_results[] = sprintf( __( 'User with ID %1$d could not be found!', 'external-files-from-google-drive' ), $user_id );
+				$check_results[] = sprintf( __( 'User with ID %1$d could not be found!', 'external-files-in-media-library' ), $user_id );
 				continue;
 			}
 
@@ -148,11 +148,11 @@ class Cli {
 			// check if token has been refreshed.
 			if ( $client_obj->has_token_refreshed() ) {
 				/* translators: %1$s will be replaced by the username. */
-				$check_results[] = sprintf( __( 'Token has been refreshed for user %1$s.', 'external-files-from-google-drive' ), $user->display_name );
+				$check_results[] = sprintf( __( 'Token has been refreshed for user %1$s.', 'external-files-in-media-library' ), $user->display_name );
 			} else {
 				// show hint if token has not been refreshed.
 				/* translators: %1$s will be replaced by the username. */
-				$check_results[] = sprintf( __( 'Token has not been refreshed for user %1$s.', 'external-files-from-google-drive' ), $user->display_name );
+				$check_results[] = sprintf( __( 'Token has not been refreshed for user %1$s.', 'external-files-in-media-library' ), $user->display_name );
 			}
 		}
 
