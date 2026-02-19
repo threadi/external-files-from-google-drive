@@ -52,13 +52,6 @@
         </exec>
     </target>
 
-    <!-- generate documentation -->
-    <target name="generate-documentation" depends="composer-install">
-        <exec dir="${src.dir}" failonerror="false" executable="vendor/bin/wp-documentor">
-            <arg line="parse app --format=markdown --output=docs/hooks.md --prefix=efmlgcs_" />
-        </exec>
-    </target>
-
     <!-- check WCS compatibility -->
     <target name="check-wcs" depends="composer-install">
         <exec dir="${src.dir}" failonerror="false" executable="vendor/bin/phpcbf">
@@ -103,7 +96,7 @@
     <target name="init" description="Initialize the project" depends="composer-install,autoloader-generation-dev" />
 
     <!-- create release-zip -->
-    <target name="build" description="Builds a new release" depends="init,generate-documentation,autoloader-generation,check-phpstan,check-php-compatibility,check-wcs,setVersionNumber">
+    <target name="build" description="Builds a new release" depends="init,autoloader-generation,check-phpstan,check-php-compatibility,check-wcs,setVersionNumber">
         <delete file="${build.dir}/${plugin.slug}_${plugin.version}.zip"/>
         <zip destfile="${build.dir}/${plugin.slug}_${plugin.version}.zip">
             <zipfileset dir="${src.dir}/app" prefix="${plugin.slug}/app" />

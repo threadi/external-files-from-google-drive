@@ -29,8 +29,6 @@ jobs:
           rm changelog.md
           rm readme.md
 
-      - uses: anchore/sbom-action@v0
-
       - name: Generate autoloader
         run: composer dump-autoload -oa --no-dev
 
@@ -94,3 +92,5 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           files: ${{ github.event.repository.name }}_${{ github.ref_name }}.zip
+
+      - uses: anchore/sbom-action@v0
