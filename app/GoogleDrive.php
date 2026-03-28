@@ -155,6 +155,11 @@ class GoogleDrive extends Service_Base implements Service {
 			return;
 		}
 
+		// bail if settings object is missing.
+		if( ! class_exists( '\easySettingsForWordPress\Settings' ) ) {
+			return;
+		}
+
 		// add the endpoint for Google OAuth.
 		add_rewrite_rule( $this->get_oauth_slug() . '?$', 'index.php?' . $this->get_oauth_slug() . '=1', 'top' );
 
