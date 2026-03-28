@@ -11,16 +11,15 @@ namespace ExternalFilesFromGoogleDrive;
 defined( 'ABSPATH' ) || exit;
 
 use easyDirectoryListingForWordPress\Init;
+use easySettingsForWordPress\Fields\Button;
+use easySettingsForWordPress\Fields\Checkbox;
+use easySettingsForWordPress\Fields\Number;
+use easySettingsForWordPress\Fields\TextInfo;
+use easySettingsForWordPress\Page;
+use easySettingsForWordPress\Section;
+use easySettingsForWordPress\Tab;
 use ExternalFilesFromGoogleDrive\GoogleDrive\Client;
 use ExternalFilesFromGoogleDrive\GoogleDrive\Export;
-use ExternalFilesInMediaLibrary\Dependencies\easySettingsForWordPress\Fields\Button;
-use ExternalFilesInMediaLibrary\Dependencies\easySettingsForWordPress\Fields\Checkbox;
-use ExternalFilesInMediaLibrary\Dependencies\easySettingsForWordPress\Fields\Number;
-use ExternalFilesInMediaLibrary\Dependencies\easySettingsForWordPress\Fields\TextInfo;
-use ExternalFilesInMediaLibrary\Dependencies\easySettingsForWordPress\Page;
-use ExternalFilesInMediaLibrary\Dependencies\easySettingsForWordPress\Section;
-use ExternalFilesInMediaLibrary\Dependencies\easySettingsForWordPress\Settings;
-use ExternalFilesInMediaLibrary\Dependencies\easySettingsForWordPress\Tab;
 use ExternalFilesInMediaLibrary\ExternalFiles\Export_Base;
 use ExternalFilesInMediaLibrary\ExternalFiles\ImportDialog;
 use ExternalFilesInMediaLibrary\ExternalFiles\Results;
@@ -29,6 +28,7 @@ use ExternalFilesInMediaLibrary\Plugin\Admin\Directory_Listing;
 use easyDirectoryListingForWordPress\Crypt;
 use ExternalFilesInMediaLibrary\Plugin\Helper;
 use ExternalFilesInMediaLibrary\Plugin\Log;
+use ExternalFilesInMediaLibrary\Plugin\Settings;
 use ExternalFilesInMediaLibrary\Services\Service;
 use ExternalFilesInMediaLibrary\Services\Service_Base;
 use Google\Service\Drive;
@@ -155,11 +155,16 @@ class GoogleDrive extends Service_Base implements Service {
 			return;
 		}
 
+		// bail if settings object is missing.
+		if( ! class_exists( '\easySettingsForWordPress\Settings' ) ) {
+			return;
+		}
+
 		// add the endpoint for Google OAuth.
 		add_rewrite_rule( $this->get_oauth_slug() . '?$', 'index.php?' . $this->get_oauth_slug() . '=1', 'top' );
 
 		// get the settings object.
-		$settings_obj = Settings::get_instance();
+		$settings_obj = Settings::get_instance()->get_settings_obj();
 
 		// get the settings page.
 		$settings_page = $settings_obj->get_page( \ExternalFilesInMediaLibrary\Plugin\Settings::get_instance()->get_menu_slug() );
@@ -208,14 +213,14 @@ class GoogleDrive extends Service_Base implements Service {
 				// create the dialog.
 				$dialog = $this->get_connect_dialog();
 
-				$field = new Button();
+				$field = new Button( $settings_obj );
 				$field->set_title( __( 'API connection', 'external-files-from-google-drive' ) );
 				$field->set_button_title( __( 'Connect now', 'external-files-from-google-drive' ) );
 			} else {
 				// create the dialog.
 				$dialog = $this->get_disconnect_dialog();
 
-				$field = new Button();
+				$field = new Button( $settings_obj );
 				$field->set_title( __( 'API connection', 'external-files-from-google-drive' ) );
 				$field->set_button_title( __( 'Disconnect', 'external-files-from-google-drive' ) );
 
@@ -235,7 +240,7 @@ class GoogleDrive extends Service_Base implements Service {
 			$setting->set_section( $section );
 			$setting->set_type( 'integer' );
 			$setting->set_default( 0 );
-			$field = new Checkbox();
+			$field = new Checkbox( $settings_obj );
 			$field->set_title( __( 'Show shared files', 'external-files-from-google-drive' ) );
 			$field->set_setting( $setting );
 			$field->set_readonly( $this->is_disabled() );
@@ -246,7 +251,7 @@ class GoogleDrive extends Service_Base implements Service {
 			$setting->set_section( $section );
 			$setting->set_type( 'integer' );
 			$setting->set_default( 0 );
-			$field = new Checkbox();
+			$field = new Checkbox( $settings_obj );
 			$field->set_title( __( 'Show trashed files', 'external-files-from-google-drive' ) );
 			$field->set_setting( $setting );
 			$field->set_readonly( $this->is_disabled() );
@@ -258,7 +263,7 @@ class GoogleDrive extends Service_Base implements Service {
 			$setting->set_section( $section );
 			$setting->set_show_in_rest( false );
 			$setting->prevent_export( true );
-			$field = new TextInfo();
+			$field = new TextInfo( $settings_obj );
 			$field->set_title( __( 'Hint', 'external-files-from-google-drive' ) );
 			/* translators: %1$s will be replaced by a URL. */
 			$field->set_description( sprintf( __( 'Each user will find its settings in his own <a href="%1$s">user profile</a>.', 'external-files-from-google-drive' ), $this->get_config_url() ) );
@@ -270,7 +275,7 @@ class GoogleDrive extends Service_Base implements Service {
 		$setting->set_section( $section );
 		$setting->set_type( 'integer' );
 		$setting->set_default( 10 );
-		$field = new Number();
+		$field = new Number( $settings_obj );
 		$field->set_title( __( 'Max. files to load per iteration', 'external-files-from-google-drive' ) );
 		$field->set_description( __( 'This value specifies how many files should be loaded during a directory import. The higher the value, the greater the likelihood of timeouts during import.', 'external-files-from-google-drive' ) );
 		$field->set_setting( $setting );
