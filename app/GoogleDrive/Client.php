@@ -83,7 +83,7 @@ class Client {
 		// refresh token if it has been expired.
 		if ( $client->isAccessTokenExpired() ) {
 			// log event.
-			Log::get_instance()->create( __( 'Google OAuth token expired. Requesting a new one now.', 'external-files-in-media-library' ), '', 'info', 2 );
+			Log::get_instance()->create( __( 'Google OAuth token expired. Requesting a new one now.', 'external-files-from-google-drive' ), '', 'info', 2 );
 
 			// get new token via our own endpoint.
 			$access_token = $google_drive_obj->get_refreshed_token( $client );
@@ -100,7 +100,7 @@ class Client {
 				Helper::is_cli() ? \WP_CLI::error( $access_token_json ) : '';
 
 				// log event.
-				Log::get_instance()->create( __( 'Got empty response for requested new Google OAuth token!', 'external-files-in-media-library' ), '', 'error' );
+				Log::get_instance()->create( __( 'Got empty response for requested new Google OAuth token!', 'external-files-from-google-drive' ), '', 'error' );
 
 				// return false to break the process.
 				return false;
@@ -115,7 +115,7 @@ class Client {
 				Helper::is_cli() ? \WP_CLI::error( $access_token_json ) : '';
 
 				// log event.
-				Log::get_instance()->create( __( 'Got error from Google for requested new OAuth token:', 'external-files-in-media-library' ) . ' <code>' . wp_json_encode( $access_token ) . '</code>', '', 'error' );
+				Log::get_instance()->create( __( 'Got error from Google for requested new OAuth token:', 'external-files-from-google-drive' ) . ' <code>' . wp_json_encode( $access_token ) . '</code>', '', 'error' );
 
 				// return false to break the process.
 				return false;

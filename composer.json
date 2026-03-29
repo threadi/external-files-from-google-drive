@@ -43,7 +43,6 @@
         "php-stubs/wp-cli-stubs": "^2.11",
         "phpcompatibility/phpcompatibility-wp": "^2.1",
         "dealerdirect/phpcodesniffer-composer-installer": "^1.2"
-
     },
     "require": {
         "php": "^8.1",

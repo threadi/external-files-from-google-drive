@@ -2,7 +2,7 @@
 /**
  * File to handle a configuration preset to use only AWS S3.
  *
- * @package external-files-in-media-library
+ * @package external-files-from-google-drive
  */
 
 namespace ExternalFilesFromGoogleDrive\Plugin;
@@ -37,7 +37,7 @@ class Configuration extends Configuration_Base {
 	 * @return string
 	 */
 	public function get_title(): string {
-		return __( 'Use only Google Drive', 'external-files-in-media-library' );
+		return __( 'Use only Google Drive', 'external-files-from-google-drive' );
 	}
 
 	/**
@@ -47,7 +47,7 @@ class Configuration extends Configuration_Base {
 	 */
 	public function get_dialog_hints(): array {
 		return array(
-			'<p>' . __( 'This will disable all other services except Google Drive.', 'external-files-in-media-library' ) . '<br>' . __( 'After that, you will only be able to see and use Google Drive for external sources.', 'external-files-in-media-library' ) . '</p>',
+			'<p>' . __( 'This will disable all other services except Google Drive.', 'external-files-from-google-drive' ) . '<br>' . __( 'After that, you will only be able to see and use Google Drive for external sources.', 'external-files-from-google-drive' ) . '</p>',
 		);
 	}
 
