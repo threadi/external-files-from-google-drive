@@ -5,6 +5,7 @@
 ### Changed
 
 - Updates translations
+- Refresh the permalinks after this plugin has been updated
 
 ## [1.0.1] - 29.03.2026
 

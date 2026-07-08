@@ -8,11 +8,12 @@
 namespace ExternalFilesFromGoogleDrive\Plugin;
 
 // prevent direct access.
+defined( 'ABSPATH' ) || exit;
+
 use ExternalFilesFromGoogleDrive\GoogleDrive;
+use ExternalFilesInMediaLibrary\ExternalFiles\Proxy;
 use ExternalFilesInMediaLibrary\Plugin\Roles;
 use ExternalFilesInMediaLibrary\Services\Service_Plugin_Base;
-
-defined( 'ABSPATH' ) || exit;
 
 /**
  * Initialize the plugin, connect all together.
@@ -103,6 +104,9 @@ class Init {
 	public function activation(): void {
 		// set the capabilities for this new service.
 		Roles::get_instance()->set( array( 'administrator', 'editor' ), 'efml_cap_' . GoogleDrive::get_instance()->get_name() );
+
+		// clear the permalinks.
+		Proxy::get_instance()->set_refresh();
 	}
 
 	/**
