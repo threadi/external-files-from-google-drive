@@ -1,5 +1,22 @@
 # Changelog
 
+## [1.1.0] - 11.07.2026
+
+### Added
+
+- Added support for direct input of Google Drive credentials
+- Added some more hooks
+
+### Changed
+
+- Optimized check for given state on OAuth response
+- Updates translations
+- Refresh the permalinks after this plugin has been updated
+
+### Removed
+
+- Removed some now unused composer packages from build processes
+
 ## [1.0.1] - 29.03.2026
 
 ### Added

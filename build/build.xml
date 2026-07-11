@@ -118,10 +118,8 @@
             <zipfileset dir="${src.dir}/vendor/google" prefix="${plugin.slug}/vendor/google" />
             <zipfileset dir="${src.dir}/vendor/guzzlehttp" prefix="${plugin.slug}/vendor/guzzlehttp" />
             <zipfileset dir="${src.dir}/vendor/monolog" prefix="${plugin.slug}/vendor/monolog" />
-            <zipfileset dir="${src.dir}/vendor/paragonie" prefix="${plugin.slug}/vendor/paragonie" />
             <zipfileset dir="${src.dir}/vendor/psr" prefix="${plugin.slug}/vendor/psr" />
             <zipfileset dir="${src.dir}/vendor/ralouphie" prefix="${plugin.slug}/vendor/ralouphie" />
-            <zipfileset dir="${src.dir}/vendor/phpseclib" prefix="${plugin.slug}/vendor/phpseclib" />
             <zipfileset dir="${src.dir}/vendor/symfony" prefix="${plugin.slug}/vendor/symfony" />
             <zipfileset dir="${src.dir}" includes="readme-release.txt" fullpath="${plugin.slug}/readme.txt" />
             <zipfileset dir="${src.dir}" includes="uninstall-release.php" fullpath="${plugin.slug}/uninstall.php" />

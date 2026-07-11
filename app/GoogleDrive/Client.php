@@ -47,7 +47,7 @@ class Client {
 	}
 
 	/**
-	 * Return the access token (which is an array).
+	 * Return the access token.
 	 *
 	 * @return array<string>
 	 */
