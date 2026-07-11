@@ -14,6 +14,8 @@ use easyDirectoryListingForWordPress\Init;
 use easySettingsForWordPress\Fields\Button;
 use easySettingsForWordPress\Fields\Checkbox;
 use easySettingsForWordPress\Fields\Number;
+use easySettingsForWordPress\Fields\Password;
+use easySettingsForWordPress\Fields\Text;
 use easySettingsForWordPress\Fields\TextInfo;
 use easySettingsForWordPress\Page;
 use easySettingsForWordPress\Section;
@@ -142,6 +144,7 @@ class GoogleDrive extends Service_Base implements Service {
 		add_filter( 'efml_google_drive_query_params', array( $this, 'set_query_params' ) );
 		add_filter( 'efml_google_drive_hide_file', array( $this, 'prevent_not_allowed_files' ), 10, 3 );
 		add_filter( 'efml_directory_listing_before_tree_building', array( $this, 'filter_on_directory_request' ), 10, 3 );
+		add_filter( 'efml_service_modes', array( $this, 'add_direct_input_mode' ) );
 	}
 
 	/**
@@ -234,7 +237,7 @@ class GoogleDrive extends Service_Base implements Service {
 			$field->set_custom_attributes( array( 'data-dialog' => wp_json_encode( $dialog ) ) );
 			$setting->set_field( $field );
 		}
-		if ( defined( 'EFML_ACTIVATION_RUNNING' ) || in_array( $this->get_mode(), array( 'global', 'manually' ), true ) ) {
+		if ( defined( 'EFML_ACTIVATION_RUNNING' ) || in_array( $this->get_mode(), array( 'global', 'manually', 'direct_input' ), true ) ) {
 			// add setting to show also shared files.
 			$setting = $settings_obj->add_setting( 'eml_google_drive_show_shared' );
 			$setting->set_section( $section );
@@ -267,6 +270,78 @@ class GoogleDrive extends Service_Base implements Service {
 			$field->set_title( __( 'Hint', 'external-files-from-google-drive' ) );
 			/* translators: %1$s will be replaced by a URL. */
 			$field->set_description( sprintf( __( 'Each user will find its settings in his own <a href="%1$s">user profile</a>.', 'external-files-from-google-drive' ), $this->get_config_url() ) );
+			$setting->set_field( $field );
+		}
+
+		if ( $this->is_mode( 'direct_input' ) ) {
+			$description = __( 'To fill in Client ID and Client Secret, follow these steps:', 'external-files-from-google-drive' ) . '<ol>';
+			/* translators: %1$s and %2$s will be replaced by a URL */
+			$description .= '<li>' . sprintf( __( 'Go to this Google Cloud URL: %1$s', 'external-files-from-google-drive' ), '<a href="https://console.cloud.google.com/apis/credentials" target="_blank">https://console.cloud.google.com/apis/credentials</a>' ) . '</li>';
+			$description .= '<li>' . __( 'Select the project you want or create a new one.', 'external-files-from-google-drive' ) . '</li>';
+			$description .= '<li>' . __( 'Select the project you want or create a new one.', 'external-files-from-google-drive' ) . '</li>';
+			$description .= '<li>' . __( 'Under "Library" assign the Google Drive API to the project.', 'external-files-from-google-drive' ) . '</li>';
+			$description .= '<li>' . __( 'Create a new set of "OAuth 2.0 Client IDs." There, you will find the Client ID and Client Secret. Copy them.', 'external-files-from-google-drive' ) . '</li>';
+			$description .= '<li>' . __( 'Also in this dialog, enter the following as the redirect URL:', 'external-files-from-google-drive' ) . '<code class="copy-text-attr" data-text="' . $this->get_real_redirect_uri() . '" data-copied-label="' . esc_attr__( 'Copied', 'external-files-from-google-drive' ) . '">' . $this->get_real_redirect_uri() . '</code></li>';
+			$description .= '<li>' . __( 'Insert the copied Client ID and Client Secret in the fields here and save this form.', 'external-files-from-google-drive' ) . '</li>';
+			$description .= '<li>' . __( 'Click on the button below.', 'external-files-from-google-drive' ) . '</li></ol>';
+			if ( ! $this->is_direct_input_available() ) {
+				$description = __( 'You need an SSL-certificate for your domain to use this method.', 'external-files-from-google-drive' );
+			}
+
+			// add setting for the client ID.
+			$setting = $settings_obj->add_setting( 'eml_google_drive_credential_client_id' );
+			$setting->set_section( $section );
+			$setting->set_show_in_rest( false );
+			$setting->prevent_export( true );
+			$setting->set_read_callback( array( $this, 'decrypt_value' ) );
+			$setting->set_save_callback( array( $this, 'encrypt_value' ) );
+			$field = new Text( $settings_obj );
+			$field->set_title( __( 'Client ID', 'external-files-from-google-drive' ) );
+			$field->set_description( $description );
+			$field->set_placeholder( 'xy-apps.googleusercontent.com' );
+			$field->set_readonly( ! $this->is_direct_input_available() );
+			$setting->set_field( $field );
+
+			// add setting for the client secret.
+			$setting = $settings_obj->add_setting( 'eml_google_drive_credential_client_secret' );
+			$setting->set_section( $section );
+			$setting->set_show_in_rest( false );
+			$setting->prevent_export( true );
+			$setting->set_read_callback( array( $this, 'decrypt_value' ) );
+			$setting->set_save_callback( array( $this, 'encrypt_value' ) );
+			$field = new Password( $settings_obj );
+			$field->set_title( __( 'Client Secret', 'external-files-from-google-drive' ) );
+			$field->set_placeholder( 'AbCdEfG' );
+			$field->set_readonly( ! $this->is_direct_input_available() );
+			$setting->set_field( $field );
+
+			// Connect/Disconnect-Button, wie in den anderen Modi.
+			$setting = $settings_obj->add_setting( 'eml_google_drive_connector' );
+			$setting->set_section( $section );
+			$setting->set_autoload( false );
+			$setting->prevent_export( true );
+
+			$access_token         = $this->get_access_token();
+			$custom_client_id     = get_option( 'eml_google_drive_credential_client_id' );
+			$custom_client_secret = get_option( 'eml_google_drive_credential_client_secret' );
+
+			$field = new Button( $settings_obj );
+			$field->set_title( __( 'API connection', 'external-files-from-google-drive' ) );
+			if ( empty( $access_token ) ) {
+				$field->set_button_title( __( 'Connect now', 'external-files-from-google-drive' ) );
+
+				if ( empty( $custom_client_id ) || empty( $custom_client_secret ) || ! $this->is_direct_input_available() ) {
+					$field->set_readonly( true );
+					$field->set_description( __( 'Please save your Client ID and Client Secret first.', 'external-files-from-google-drive' ) );
+				} else {
+					$field->add_class( 'easy-dialog-for-wordpress' );
+					$field->set_custom_attributes( array( 'data-dialog' => Helper::get_json( $this->get_connect_dialog() ) ) );
+				}
+			} else {
+				$field->set_button_title( __( 'Disconnect', 'external-files-from-google-drive' ) );
+				$field->add_class( 'easy-dialog-for-wordpress' );
+				$field->set_custom_attributes( array( 'data-dialog' => Helper::get_json( $this->get_disconnect_dialog() ) ) );
+			}
 			$setting->set_field( $field );
 		}
 
@@ -332,7 +407,7 @@ class GoogleDrive extends Service_Base implements Service {
 	 */
 	public function get_access_token(): array {
 		// get it global, if this is enabled.
-		if ( $this->is_mode( 'global' ) ) {
+		if ( $this->is_mode( 'global' ) || $this->is_mode( 'direct_input' ) ) {
 			return get_option( 'eml_google_drive_access_tokens', array() );
 		}
 
@@ -388,6 +463,15 @@ class GoogleDrive extends Service_Base implements Service {
 			update_option( 'eml_google_drive_access_tokens', $access_token );
 		}
 
+		// save it global, if this is enabled.
+		if ( $this->is_mode( 'direct_input' ) ) {
+			// log event.
+			Log::get_instance()->create( __( 'New Google Drive access token saved for direct input usage.', 'external-files-from-google-drive' ), '', 'info', 2 );
+
+			// save the updated token.
+			update_option( 'eml_google_drive_access_tokens', $access_token );
+		}
+
 		// save it user-specific, if this is enabled.
 		if ( in_array( $this->get_mode(), array( 'user', 'manually' ), true ) ) {
 			// get the user_id from the session if it is not set.
@@ -422,7 +506,7 @@ class GoogleDrive extends Service_Base implements Service {
 	 */
 	public function delete_access_token(): bool {
 		// delete it global, if this is enabled.
-		if ( $this->is_mode( 'global' ) ) {
+		if ( $this->is_mode( 'global' ) || $this->is_mode( 'direct_input' ) ) {
 			// clear the global list.
 			update_option( 'eml_google_drive_access_tokens', array() );
 		}
@@ -504,6 +588,14 @@ class GoogleDrive extends Service_Base implements Service {
 		// set our client ID.
 		$client_id = EFML_GOOGLE_OAUTH_CLIENT_ID;
 
+		// use custom client ID if direct input is used.
+		if ( $this->is_mode( 'direct_input' ) ) {
+			$custom = get_option( 'eml_google_drive_credential_client_id' );
+			if ( ! empty( $custom ) ) {
+				$client_id = $custom;
+			}
+		}
+
 		// show deprecated warning for the old hook name.
 		$client_id = apply_filters_deprecated( 'eml_google_drive_client_id', array( $client_id ), '5.0.0', 'efml_google_drive_client_id' );
 
@@ -514,6 +606,18 @@ class GoogleDrive extends Service_Base implements Service {
 		 * @param string $client_id The client ID.
 		 */
 		return apply_filters( 'efmlgd_google_drive_client_id', $client_id );
+	}
+
+	/**
+	 * Return the client secret set in direct input mode.
+	 *
+	 * @return string
+	 */
+	public function get_client_secret(): string {
+		if ( $this->is_mode( 'direct_input' ) ) {
+			return $this->decrypt_value( get_option( 'eml_google_drive_credential_client_secret' ) );
+		}
+		return '';
 	}
 
 	/**
@@ -581,6 +685,11 @@ class GoogleDrive extends Service_Base implements Service {
 	private function get_redirect_uri(): string {
 		// set the redirect URI.
 		$redirect_uri = EFML_GOOGLE_OAUTH_SERVICE_URL;
+
+		// get the real redirect URL if direct input is used.
+		if ( $this->is_mode( 'direct_input' ) ) {
+			$redirect_uri = $this->get_real_redirect_uri();
+		}
 
 		// show deprecated warning for the old hook name.
 		$redirect_uri = apply_filters_deprecated( 'eml_google_drive_redirect_uri', array( $redirect_uri ), '5.0.0', 'efml_google_drive_redirect_uri' );
@@ -662,7 +771,15 @@ class GoogleDrive extends Service_Base implements Service {
 	 * @return string
 	 */
 	private function get_oauth_slug(): string {
-		return 'emlgoogledrive';
+		$slug = 'emlgoogledrive';
+
+		/**
+		 * Filter the OAuth slug for the real return URL.
+		 *
+		 * @since 1.1.0 Available since 1.1.0.
+		 * @param string $slug The slug.
+		 */
+		return apply_filters( 'efmlgd_google_drive_slug', $slug );
 	}
 
 	/**
@@ -677,6 +794,54 @@ class GoogleDrive extends Service_Base implements Service {
 		// bail if the slug is unused.
 		if ( empty( get_query_var( $this->get_oauth_slug() ) ) ) {
 			return $template;
+		}
+
+		// if direct input is used, get the codes from the request.
+		if ( $this->is_mode( 'direct_input' ) ) {
+			// get the state.
+			$state = filter_input( INPUT_GET, 'state', FILTER_SANITIZE_STRING );
+
+			// bail if state is empty.
+			if ( empty( $state ) ) {
+				Log::get_instance()->create( __( 'Missing state in Google OAuth response.', 'external-files-from-google-drive' ), '', 'error' );
+				return Helper::get_404_template();
+			}
+
+			// bail if state is not the expected value.
+			if ( $state !== $this->get_state() ) {
+				Log::get_instance()->create( __( 'State from Google OAuth response does not match the required value.', 'external-files-from-google-drive' ), '', 'error' );
+				return Helper::get_404_template();
+			}
+
+			// get the given code.
+			$code = filter_input( INPUT_GET, 'code', FILTER_SANITIZE_FULL_SPECIAL_CHARS );
+
+			// bail if no code is given.
+			if ( empty( $code ) ) {
+				return Helper::get_404_template();
+			}
+
+			// initiate the client object.
+			$client = new \Google\Client();
+			$client->setClientId( Crypt::get_instance()->decrypt( $this->get_client_id() ) );
+			$client->setClientSecret( $this->get_client_secret() );
+			$client->setRedirectUri( $this->get_real_redirect_uri() );
+
+			// get the token.
+			$access_token = $client->fetchAccessTokenWithAuthCode( $code );
+
+			// bail on error.
+			if ( ! empty( $access_token['error'] ) ) {
+				Log::get_instance()->create( __( 'Got error from Google OAuth:', 'external-files-from-google-drive' ) . ' <code>' . wp_json_encode( $access_token ) . '</code>', '', 'error' );
+				return Helper::get_404_template();
+			}
+
+			// set the token.
+			$this->set_access_token( $access_token );
+
+			// redirect to the config URL.
+			wp_safe_redirect( $this->get_config_url() );
+			exit;
 		}
 
 		// get access token from request.
@@ -992,7 +1157,7 @@ class GoogleDrive extends Service_Base implements Service {
 	 */
 	public function is_disabled(): bool {
 		// not disabled if mode is set 'manually'.
-		if ( $this->is_mode( 'manually' ) ) {
+		if ( $this->is_mode( 'manually' ) || $this->is_mode( 'direct_input' ) ) {
 			return false;
 		}
 
@@ -1042,7 +1207,7 @@ class GoogleDrive extends Service_Base implements Service {
 		}
 
 		// get it global, if this is enabled.
-		if ( in_array( $this->get_mode(), array( 'global', 'manually' ), true ) ) {
+		if ( in_array( $this->get_mode(), array( 'global', 'manually', 'direct_input' ), true ) ) {
 			// do not query for trashed files.
 			if ( 1 !== absint( get_option( 'eml_google_drive_show_trashed' ) ) ) {
 				$q[] = 'trashed = false';
@@ -1129,6 +1294,26 @@ class GoogleDrive extends Service_Base implements Service {
 	 * @return array<string,mixed>
 	 */
 	public function get_refreshed_token( \Google\Client $client ): array {
+		// use another way in direct input mode.
+		if ( $this->is_mode( 'direct_input' ) ) {
+			$client->setClientId( $this->get_client_id() );
+			$client->setClientSecret( $this->get_client_secret() );
+
+			// request the new token.
+			$old_refresh_token = $client->getRefreshToken();
+
+			// get the new token.
+			$new_token = $client->fetchAccessTokenWithRefreshToken( $old_refresh_token );
+
+			// Google does not deliver a new refresh_token, so wie save the old one here.
+			if ( empty( $new_token['refresh_token'] ) && ! empty( $old_refresh_token ) ) {
+				$new_token['refresh_token'] = $old_refresh_token;
+			}
+
+			// return the token.
+			return $new_token;
+		}
+
 		// create the URL.
 		$url = add_query_arg(
 			array(
@@ -1397,7 +1582,7 @@ class GoogleDrive extends Service_Base implements Service {
 			'title'     => __( 'Connect Google Drive', 'external-files-from-google-drive' ),
 			'texts'     => array(
 				'<p>' . __( 'You will be directed to a Google dialog. Follow this and confirm the approvals.', 'external-files-from-google-drive' ) . '</p>',
-				'<p>' . __( 'You will also be directed to the website of the plugin developer. This is necessary to allow you to easily share your Google Drive account. No data about you will be stored in this context.', 'external-files-from-google-drive' ) . '</p>',
+				! $this->is_mode( 'direct_input' ) ? '<p>' . __( 'You will also be directed to the website of the plugin developer. This is necessary to allow you to easily share your Google Drive account. No data about you will be stored in this context.', 'external-files-from-google-drive' ) . '</p>' : '',
 				'<p><strong>' . __( 'Click on the button below to connect your Google Drive with your website.', 'external-files-from-google-drive' ) . '</strong></p>',
 			),
 			'buttons'   => array(
@@ -1543,7 +1728,7 @@ class GoogleDrive extends Service_Base implements Service {
 			$this->fields = array( // @phpstan-ignore property.notFound
 				'access_token' => array(
 					'name'        => 'access_token',
-					'type'        => ! empty( $token ) && ! $this->is_mode( 'manually' ) ? 'hidden' : 'textarea',
+					'type'        => ( ! empty( $token ) && ! $this->is_mode( 'manually' ) ) || $this->is_mode( 'direct_input' ) ? 'hidden' : 'textarea',
 					'label'       => __( 'Access Token', 'external-files-from-google-drive' ),
 					'placeholder' => __( 'Enter your access token', 'external-files-from-google-drive' ),
 					'value'       => empty( $token ) ? '' : Helper::get_json( $token ),
@@ -1601,6 +1786,19 @@ class GoogleDrive extends Service_Base implements Service {
 		// get the token.
 		$token = $this->get_access_token();
 
+		// bail if direct mode is used.
+		if ( $this->is_mode( 'direct_input' ) ) {
+			if ( empty( $token ) ) {
+				/* translators: %1$s will be replaced by a URL. */
+				return sprintf( __( 'Set your credentials <a href="%1$s">here</a>.', 'external-files-from-google-drive' ), $this->get_config_url() );
+			}
+			if ( ! current_user_can( 'manage_options' ) ) {
+				return __( 'An access token has already been set by an administrator in the plugin settings. Just connect for show the files.', 'external-files-from-google-drive' );
+			}
+			/* translators: %1$s will be replaced by a URL. */
+			return sprintf( __( 'Your credentials are already set <a href="%1$s">here</a>. Just connect for show the files.', 'external-files-from-google-drive' ), $this->get_config_url() );
+		}
+
 		// bail if token is set.
 		if ( ! empty( $token ) && ! $this->is_mode( 'manually' ) ) {
 			// if access token is set in plugin settings.
@@ -1643,11 +1841,125 @@ class GoogleDrive extends Service_Base implements Service {
 	}
 
 	/**
-	 * Return the default roles to use for this service.
+	 * Add direct input of credentials as additional mode for Google Drive connection settings.
 	 *
-	 * @return array<int,string>
+	 * @param array<string,string> $modes The list of modes.
+	 *
+	 * @return array<string,string>
 	 */
-	public function get_default_roles(): array {
-		return array( 'administrator', 'editor' );
+	public function add_direct_input_mode( array $modes ): array {
+		$modes['direct_input'] = __( 'Direct input of API credentials', 'external-files-from-google-drive' );
+		return $modes;
+	}
+
+	/**
+	 * Encrypt a given value.
+	 *
+	 * @param string|null $value The value.
+	 *
+	 * @return string
+	 */
+	public function encrypt_value( ?string $value ): string {
+		// bail if value is not a string.
+		if ( ! is_string( $value ) ) {
+			return '';
+		}
+
+		// bail if string is empty.
+		if ( empty( $value ) ) {
+			return '';
+		}
+
+		// return encrypted string.
+		return Crypt::get_instance()->encrypt( $value );
+	}
+
+	/**
+	 * Decrypt a given value.
+	 *
+	 * @param string|null $value The value.
+	 *
+	 * @return string
+	 */
+	public function decrypt_value( ?string $value ): string {
+		// bail if value is not a string.
+		if ( ! is_string( $value ) ) {
+			return '';
+		}
+
+		// bail if string is empty.
+		if ( empty( $value ) ) {
+			return '';
+		}
+
+		// return encrypted string.
+		return Crypt::get_instance()->decrypt( $value );
+	}
+
+	/**
+	 * The direct input method is only usable under following conditions:
+	 *
+	 * - The project does use a TLD for their domain.
+	 * - The project is using an SSL-certificate.
+	 *
+	 * @return bool
+	 */
+	private function is_direct_input_available(): bool {
+		// bail if no SSL is used.
+		if ( ! is_ssl() ) {
+			return false;
+		}
+
+		// get the host from the configured web-URL.
+		$host = wp_parse_url( get_option( 'siteurl' ), PHP_URL_HOST );
+
+		// bail if no host could be loaded.
+		if ( empty( $host ) ) {
+			return false;
+		}
+
+		// "localhost" itself is explicitly allowed by Google.
+		if ( 'localhost' === $host ) {
+			return true;
+		}
+
+		// reserved/special-use TLDs and hostnames that are never public
+		// (RFC 2606, RFC 6762, plus common local-dev conventions).
+		$reserved_tlds = array( 'local', 'test', 'example', 'invalid', 'localhost', 'internal', 'lan', 'home', 'corp', 'private' );
+
+		// get the parts of the host name.
+		$parts = explode( '.', $host );
+		$tld   = strtolower( end( $parts ) );
+
+		// bail if the TLD is not in the list.
+		if ( in_array( $tld, $reserved_tlds, true ) ) {
+			return false;
+		}
+
+		// must contain at least one dot with a real-looking TLD (avoid bare hostnames like "myserver").
+		if ( count( $parts ) < 2 ) {
+			return false;
+		}
+
+		// all ok.
+		return true;
+	}
+
+	/**
+	 * Return the config URL for each supported mode.
+	 *
+	 * @return string
+	 */
+	protected function get_config_url(): string {
+		// if this is direct input mode, return the settings URL.
+		if ( $this->is_mode( 'direct_input' ) ) {
+			if ( ! current_user_can( 'manage_options' ) ) {
+				return '';
+			}
+			return \ExternalFilesInMediaLibrary\Plugin\Settings::get_instance()->get_url( $this->get_settings_tab_slug(), $this->get_settings_subtab_slug() );
+		}
+
+		// otherwise use the global configuration URL.
+		return parent::get_config_url();
 	}
 }
