@@ -14,9 +14,9 @@ use Exception;
 use ExternalFilesFromGoogleDrive\GoogleDrive;
 use ExternalFilesInMediaLibrary\ExternalFiles\Export_Base;
 use ExternalFilesInMediaLibrary\Plugin\Log;
-use Google\Http\MediaFileUpload;
-use Google\Service\Drive;
-use Google\Service\Drive\DriveFile;
+use ExternalFilesFromGoogleDrive\Dependencies\Google\Http\MediaFileUpload;
+use ExternalFilesFromGoogleDrive\Dependencies\Google\Service\Drive;
+use ExternalFilesFromGoogleDrive\Dependencies\Google\Service\Drive\DriveFile;
 
 /**
  * Object for export files to GoogleDrive.
@@ -74,7 +74,7 @@ class Export extends Export_Base {
 		$client     = $client_obj->get_client();
 
 		// bail if client is not a Client object.
-		if ( ! $client instanceof \Google\Client ) {
+		if ( ! $client instanceof \ExternalFilesFromGoogleDrive\Dependencies\Google\Client ) {
 			return false;
 		}
 
@@ -206,7 +206,7 @@ class Export extends Export_Base {
 		$client     = $client_obj->get_client();
 
 		// bail if client is not a Client object.
-		if ( ! $client instanceof \Google\Client ) {
+		if ( ! $client instanceof \ExternalFilesFromGoogleDrive\Dependencies\Google\Client ) {
 			return false;
 		}
 

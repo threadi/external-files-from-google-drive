@@ -19,9 +19,9 @@ use ExternalFilesInMediaLibrary\ExternalFiles\Results;
 use ExternalFilesInMediaLibrary\ExternalFiles\Results\Url_Result;
 use ExternalFilesInMediaLibrary\Plugin\Helper;
 use ExternalFilesInMediaLibrary\Plugin\Log;
-use Google\Service\Drive;
-use Google\Service\Drive\DriveFile;
-use Google\Service\Exception;
+use ExternalFilesFromGoogleDrive\Dependencies\Google\Service\Drive;
+use ExternalFilesFromGoogleDrive\Dependencies\Google\Service\Drive\DriveFile;
+use ExternalFilesFromGoogleDrive\Dependencies\Google\Service\Exception;
 use JsonException;
 
 /**
@@ -131,7 +131,7 @@ class Protocol extends Protocol_Base {
 		$client     = $client_obj->get_client();
 
 		// bail if client is not a Client object.
-		if ( ! $client instanceof \Google\Client ) {
+		if ( ! $client instanceof \ExternalFilesFromGoogleDrive\Dependencies\Google\Client ) {
 			// log event.
 			Log::get_instance()->create( __( 'Google Drive client could not be initiated!', 'external-files-from-google-drive' ), esc_url( $this->get_url() ), 'error', 0, Import::get_instance()->get_identifier() );
 
@@ -282,7 +282,7 @@ class Protocol extends Protocol_Base {
 		$client     = $client_obj->get_client();
 
 		// bail if client is not a Client object.
-		if ( ! $client instanceof \Google\Client ) {
+		if ( ! $client instanceof \ExternalFilesFromGoogleDrive\Dependencies\Google\Client ) {
 			// log event.
 			Log::get_instance()->create( __( 'Google Drive client could not be initiated!', 'external-files-from-google-drive' ), esc_url( $this->get_url() ), 'error' );
 

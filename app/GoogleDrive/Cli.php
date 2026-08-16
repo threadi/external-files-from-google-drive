@@ -13,7 +13,7 @@ defined( 'ABSPATH' ) || exit;
 use ExternalFilesFromGoogleDrive\GoogleDrive;
 use ExternalFilesInMediaLibrary\ExternalFiles\Import;
 use ExternalFilesInMediaLibrary\Plugin\Log;
-use Google\Service\Exception;
+use ExternalFilesFromGoogleDrive\Dependencies\Google\Service\Exception;
 use JsonException;
 use WP_User;
 
@@ -64,12 +64,12 @@ class Cli {
 			$client     = $client_obj->get_client();
 
 			// bail if client is not a Client object.
-			if ( ! $client instanceof \Google\Client ) {
+			if ( ! $client instanceof \ExternalFilesFromGoogleDrive\Dependencies\Google\Client ) {
 				continue;
 			}
 
 			// connect to Google Drive.
-			$service = new \Google\Service\Drive( $client );
+			$service = new \ExternalFilesFromGoogleDrive\Dependencies\Google\Service\Drive( $client );
 
 			// collect the request query.
 			$query = array(

@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.2.0] - 16.08.2026
+
+### Changed
+
+- Now requires PHP 8.2 or newer
+- Compatibility with WordPress 7.1
+- Changed the path of composer packages to be compatible with other plugins,
+  which are using other psr/monolog-versions
+
 ## [1.1.0] - 11.07.2026
 
 ### Added

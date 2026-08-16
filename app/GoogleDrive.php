@@ -33,9 +33,9 @@ use ExternalFilesInMediaLibrary\Plugin\Log;
 use ExternalFilesInMediaLibrary\Plugin\Settings;
 use ExternalFilesInMediaLibrary\Services\Service;
 use ExternalFilesInMediaLibrary\Services\Service_Base;
-use Google\Service\Drive;
-use Google\Service\Drive\DriveFile;
-use Google\Service\Exception;
+use ExternalFilesFromGoogleDrive\Dependencies\Google\Service\Drive;
+use ExternalFilesFromGoogleDrive\Dependencies\Google\Service\Drive\DriveFile;
+use ExternalFilesFromGoogleDrive\Dependencies\Google\Service\Exception;
 use JsonException;
 use WP_Error;
 use WP_User;
@@ -285,7 +285,7 @@ class GoogleDrive extends Service_Base implements Service {
 			$description .= '<li>' . __( 'Insert the copied Client ID and Client Secret in the fields here and save this form.', 'external-files-from-google-drive' ) . '</li>';
 			$description .= '<li>' . __( 'Click on the button below.', 'external-files-from-google-drive' ) . '</li></ol>';
 			if ( ! $this->is_direct_input_available() ) {
-				$description = __( 'You need an SSL-certificate for your domain to use this method.', 'external-files-from-google-drive' );
+				$description = '<strong>' . __( 'You need an SSL-certificate for your public domain to use this method. Local domains are not allowed by Google.', 'external-files-from-google-drive' ) . '</strong>';
 			}
 
 			// add setting for the client ID.
@@ -362,6 +362,7 @@ class GoogleDrive extends Service_Base implements Service {
 		$setting->set_type( 'array' );
 		$setting->set_default( array() );
 		$setting->prevent_export( true );
+		$setting->set_show_in_rest( array( 'schema' => array( 'items' => array( 'type' => 'string' ) ) ) );
 		$setting->set_save_callback( array( $this, 'preserve_tokens_value' ) );
 	}
 
@@ -822,7 +823,7 @@ class GoogleDrive extends Service_Base implements Service {
 			}
 
 			// initiate the client object.
-			$client = new \Google\Client();
+			$client = new \ExternalFilesFromGoogleDrive\Dependencies\Google\Client();
 			$client->setClientId( Crypt::get_instance()->decrypt( $this->get_client_id() ) );
 			$client->setClientSecret( $this->get_client_secret() );
 			$client->setRedirectUri( $this->get_real_redirect_uri() );
@@ -904,7 +905,7 @@ class GoogleDrive extends Service_Base implements Service {
 		$client     = $client_obj->get_client();
 
 		// bail if client is not a Client object.
-		if ( ! $client instanceof \Google\Client ) {
+		if ( ! $client instanceof \ExternalFilesFromGoogleDrive\Dependencies\Google\Client ) {
 			return array();
 		}
 
@@ -1289,11 +1290,11 @@ class GoogleDrive extends Service_Base implements Service {
 	/**
 	 * Refresh token by requesting our own endpoint.
 	 *
-	 * @param \Google\Client $client The Google client object.
+	 * @param \ExternalFilesFromGoogleDrive\Dependencies\Google\Client $client The Google client object.
 	 *
 	 * @return array<string,mixed>
 	 */
-	public function get_refreshed_token( \Google\Client $client ): array {
+	public function get_refreshed_token( \ExternalFilesFromGoogleDrive\Dependencies\Google\Client $client ): array {
 		// use another way in direct input mode.
 		if ( $this->is_mode( 'direct_input' ) ) {
 			$client->setClientId( $this->get_client_id() );
@@ -1404,7 +1405,7 @@ class GoogleDrive extends Service_Base implements Service {
 			$client = $client_obj->get_client();
 
 			// bail if client is not a Client object.
-			if ( ! $client instanceof \Google\Client ) {
+			if ( ! $client instanceof \ExternalFilesFromGoogleDrive\Dependencies\Google\Client ) {
 				// log this event.
 				Log::get_instance()->create( __( 'GoogleDrive access token is not valid.', 'external-files-from-google-drive' ), '', 'error', 1 );
 
