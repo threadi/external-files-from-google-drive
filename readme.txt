@@ -2,18 +2,18 @@
 Contributors: threadi
 Tags: external files, media library, google drive
 Requires at least: 6.2
-Tested up to: 7.0
-Requires PHP: 8.1
+Tested up to: 7.1
+Requires PHP: 8.2
 Requires CP:  2.0
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 Stable tag: @@VersionNumber@@
 
-Add the possibility to import, export and synchronise files from and to Google Drive. Your need the plugin "Externale Files in Media Library" to use it.
+Add the possibility to import, export and synchronize files from and to Google Drive. Your need the plugin "Externale Files in Media Library" to use it.
 
 == Description ==
 
-Add the possibility to import, export and synchronise files from and to Google Drive. Your need the plugin "Externale Files in Media Library" to use it.
+Add the possibility to import, export and synchronize files from and to Google Drive. Your need the plugin "Externale Files in Media Library" to use it.
 
 == Repository, documentation and reliability ==
 

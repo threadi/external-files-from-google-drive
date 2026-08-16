@@ -55,10 +55,10 @@
     <!-- check WCS compatibility -->
     <target name="check-wcs" depends="composer-install">
         <exec dir="${src.dir}" failonerror="false" executable="vendor/bin/phpcbf">
-            <arg line="--standard=ruleset.xml ."/>
+            <arg line="."/>
         </exec>
         <exec dir="${src.dir}" failonerror="true" executable="vendor/bin/phpcs">
-            <arg line="--standard=ruleset.xml ."/>
+            <arg line="."/>
         </exec>
     </target>
 
@@ -114,13 +114,7 @@
             <zipfileset dir="${src.dir}/languages" prefix="${plugin.slug}/languages" />
             <zipfileset dir="${src.dir}/vendor" includes="autoload.php" fullpath="${plugin.slug}/vendor/autoload.php" />
             <zipfileset dir="${src.dir}/vendor/composer" prefix="${plugin.slug}/vendor/composer" />
-            <zipfileset dir="${src.dir}/vendor/firebase" prefix="${plugin.slug}/vendor/firebase" />
-            <zipfileset dir="${src.dir}/vendor/google" prefix="${plugin.slug}/vendor/google" />
-            <zipfileset dir="${src.dir}/vendor/guzzlehttp" prefix="${plugin.slug}/vendor/guzzlehttp" />
-            <zipfileset dir="${src.dir}/vendor/monolog" prefix="${plugin.slug}/vendor/monolog" />
-            <zipfileset dir="${src.dir}/vendor/psr" prefix="${plugin.slug}/vendor/psr" />
-            <zipfileset dir="${src.dir}/vendor/ralouphie" prefix="${plugin.slug}/vendor/ralouphie" />
-            <zipfileset dir="${src.dir}/vendor/symfony" prefix="${plugin.slug}/vendor/symfony" />
+            <zipfileset dir="${src.dir}/vendor-prefixed" prefix="${plugin.slug}/vendor-prefixed" />
             <zipfileset dir="${src.dir}" includes="readme-release.txt" fullpath="${plugin.slug}/readme.txt" />
             <zipfileset dir="${src.dir}" includes="uninstall-release.php" fullpath="${plugin.slug}/uninstall.php" />
             <zipfileset dir="${src.dir}" includes="composer.json" prefix="${plugin.slug}" />

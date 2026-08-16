@@ -60,9 +60,9 @@ class Client {
 	 *
 	 * @param int $user_id The WordPress user ID (optional).
 	 *
-	 * @return \Google\Client|false
+	 * @return \ExternalFilesFromGoogleDrive\Dependencies\Google\Client|false
 	 */
-	public function get_client( int $user_id = 0 ): \Google\Client|false {
+	public function get_client( int $user_id = 0 ): \ExternalFilesFromGoogleDrive\Dependencies\Google\Client|false {
 		// get Google Drive object.
 		$google_drive_obj = GoogleDrive::get_instance();
 
@@ -75,7 +75,7 @@ class Client {
 		}
 
 		// get the object.
-		$client = new \Google\Client();
+		$client = new \ExternalFilesFromGoogleDrive\Dependencies\Google\Client();
 
 		// set the access token.
 		$client->setAccessToken( $access_token );
