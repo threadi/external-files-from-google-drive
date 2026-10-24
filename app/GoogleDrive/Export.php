@@ -81,8 +81,8 @@ class Export extends Export_Base {
 		// get the file path.
 		$file_path = get_attached_file( $attachment_id, true );
 
-		// bail if file path could not be loaded.
-		if ( ! is_string( $file_path ) ) {
+		// bail if file path could not be loaded or the file does not exist.
+		if ( ! is_string( $file_path ) || ! file_exists( $file_path ) ) {
 			// log this event.
 			Log::get_instance()->create( __( 'Could not load file path for given attachment ID.', 'external-files-from-google-drive' ), $target, 'error' );
 

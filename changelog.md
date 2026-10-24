@@ -1,5 +1,30 @@
 # Changelog
 
+## [1.3.0] - 24.10.2026
+
+### Added
+
+- Added support for automatic updates via GitHub ("Update URI")
+- Added PHPUnit tests and a GitHub workflow to run them
+- Added hook "efmlgd_google_drive_client" to customize the Google Client object
+
+### Changed
+
+- Updates are now checked via the WordPress hook for the "Update URI", the data of the latest release is cached
+- Set compatibility for WordPress 7.2
+- Uninstall now removes the cached update data
+
+### Fixed
+
+- Fixed settings for shared and trashed files not being used during directory listing
+- Fixed user-specific settings for shared and trashed files not being read
+- Fixed decryption of Client ID and Client Secret in direct input mode
+- Fixed "Direct input of API credentials" being offered for all services
+- Fixed wrong URLs of files imported via "import all files"
+- Fixed trashed files being imported via "import all files"
+- Fixed the limit of files per iteration loading one file too many
+- Fixed PHP deprecation and warning hints (FILTER_SANITIZE_STRING, missing token date, missing icon link, export of missing files)
+
 ## [1.2.0] - 16.08.2026
 
 ### Changed

@@ -80,6 +80,17 @@ class Client {
 		// set the access token.
 		$client->setAccessToken( $access_token );
 
+		/**
+		 * Filter the Google Client object before it is used.
+		 *
+		 * E.g. to set a custom HTTP client for the requests to the Google API.
+		 *
+		 * @since 1.3.0 Available since 1.3.0.
+		 * @param \ExternalFilesFromGoogleDrive\Dependencies\Google\Client $client The Google Client object.
+		 * @param int $user_id The WordPress user ID.
+		 */
+		$client = apply_filters( 'efmlgd_google_drive_client', $client, $user_id );
+
 		// refresh token if it has been expired.
 		if ( $client->isAccessTokenExpired() ) {
 			// log event.

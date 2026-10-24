@@ -57,6 +57,7 @@ class Uninstall {
 	 * @return void
 	 */
 	public function run(): void {
-		// TODO to add.
+		// remove the cached data of the latest release.
+		Updates::get_instance()->delete_cache();
 	}
 }
