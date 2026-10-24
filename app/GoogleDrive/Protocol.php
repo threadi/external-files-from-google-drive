@@ -195,7 +195,7 @@ class Protocol extends Protocol_Base {
 						}
 
 						// bail if limit for loaded files has been reached and this is an AJAX-request.
-						if ( wp_doing_ajax() && $loaded_files > absint( get_option( 'eml_google_drive_limit', 10 ) ) ) {
+						if ( wp_doing_ajax() && $loaded_files >= absint( get_option( 'eml_google_drive_limit', 10 ) ) ) {
 							// set marker to load more.
 							$results['load_more'] = true;
 							continue;
@@ -295,7 +295,7 @@ class Protocol extends Protocol_Base {
 
 		// collect the request query.
 		$query = array(
-			'fields'   => 'files(fileExtension,iconLink,id,imageMediaMetadata(height,rotation,width,time),mimeType,createdTime,modifiedTime,name,parents,size,hasThumbnail,thumbnailLink),nextPageToken',
+			'fields'   => 'files(fileExtension,iconLink,id,imageMediaMetadata(height,rotation,width,time),mimeType,createdTime,modifiedTime,name,parents,size,hasThumbnail,thumbnailLink,trashed),nextPageToken',
 			'pageSize' => 1000,
 			'orderBy'  => 'name_natural',
 		);
@@ -340,8 +340,8 @@ class Protocol extends Protocol_Base {
 			}
 
 			// check for duplicate.
-			if ( $this->check_for_duplicate( $this->get_url() . $file_obj->getId() ) ) {
-				Log::get_instance()->create( __( 'Specified URL already exist in your media library.', 'external-files-from-google-drive' ), esc_url( $this->get_url() . $file_obj->getId() ), 'error' );
+			if ( $this->check_for_duplicate( $google_drive_obj->get_url_mark() . $file_obj->getId() ) ) {
+				Log::get_instance()->create( __( 'Specified URL already exist in your media library.', 'external-files-from-google-drive' ), esc_url( $google_drive_obj->get_url_mark() . $file_obj->getId() ), 'error' );
 
 				continue;
 			}
@@ -351,7 +351,7 @@ class Protocol extends Protocol_Base {
 				$response = $service->files->get( $file_obj->getId(), array( 'alt' => 'media' ) );
 			} catch ( Exception $e ) {
 				// log event.
-				Log::get_instance()->create( __( 'Google Drive client could not download a requested file during mass-import! Error:', 'external-files-from-google-drive' ) . ' <code>' . wp_json_encode( $e->getErrors() ) . '</code><br>' . __( 'Requested file:', 'external-files-from-google-drive' ) . ' <code>' . wp_json_encode( $file_obj ) . '</code>', esc_url( $this->get_url() . $file_obj->getId() ), 'error' );
+				Log::get_instance()->create( __( 'Google Drive client could not download a requested file during mass-import! Error:', 'external-files-from-google-drive' ) . ' <code>' . wp_json_encode( $e->getErrors() ) . '</code><br>' . __( 'Requested file:', 'external-files-from-google-drive' ) . ' <code>' . wp_json_encode( $file_obj ) . '</code>', esc_url( $google_drive_obj->get_url_mark() . $file_obj->getId() ), 'error' );
 
 				continue;
 			}
@@ -360,7 +360,7 @@ class Protocol extends Protocol_Base {
 			$entry = array(
 				'title'         => $file_obj->getName(),
 				'local'         => true,
-				'url'           => $this->get_url() . $file_obj->getId(),
+				'url'           => $google_drive_obj->get_url_mark() . $file_obj->getId(),
 				'last-modified' => absint( strtotime( $file_obj->getCreatedTime() ) ),
 			);
 

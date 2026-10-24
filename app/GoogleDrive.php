@@ -141,10 +141,10 @@ class GoogleDrive extends Service_Base implements Service {
 		// use our own hooks.
 		add_filter( 'efml_protocols', array( $this, 'add_protocol' ) );
 		add_filter( 'efml_prevent_import', array( $this, 'check_url' ), 10, 2 );
-		add_filter( 'efml_google_drive_query_params', array( $this, 'set_query_params' ) );
-		add_filter( 'efml_google_drive_hide_file', array( $this, 'prevent_not_allowed_files' ), 10, 3 );
+		add_filter( 'efmlgd_google_drive_query_params', array( $this, 'set_query_params' ) );
+		add_filter( 'efmlgd_google_drive_hide_file', array( $this, 'prevent_not_allowed_files' ), 10, 3 );
 		add_filter( 'efml_directory_listing_before_tree_building', array( $this, 'filter_on_directory_request' ), 10, 3 );
-		add_filter( 'efml_service_modes', array( $this, 'add_direct_input_mode' ) );
+		add_filter( 'efml_service_modes', array( $this, 'add_direct_input_mode' ), 10, 2 );
 	}
 
 	/**
@@ -591,7 +591,7 @@ class GoogleDrive extends Service_Base implements Service {
 
 		// use custom client ID if direct input is used.
 		if ( $this->is_mode( 'direct_input' ) ) {
-			$custom = get_option( 'eml_google_drive_credential_client_id' );
+			$custom = $this->get_credential( 'eml_google_drive_credential_client_id' );
 			if ( ! empty( $custom ) ) {
 				$client_id = $custom;
 			}
@@ -616,9 +616,37 @@ class GoogleDrive extends Service_Base implements Service {
 	 */
 	public function get_client_secret(): string {
 		if ( $this->is_mode( 'direct_input' ) ) {
-			return $this->decrypt_value( get_option( 'eml_google_drive_credential_client_secret' ) );
+			return $this->get_credential( 'eml_google_drive_credential_client_secret' );
 		}
 		return '';
+	}
+
+	/**
+	 * Return the decrypted value of a credential setting for the direct input mode.
+	 *
+	 * The values are saved encrypted. If the setting is registered (only for users with the capability for this
+	 * service), the settings object decrypts it already during reading. Otherwise, we must decrypt it here.
+	 *
+	 * @param string $option_name The name of the option.
+	 *
+	 * @return string
+	 */
+	private function get_credential( string $option_name ): string {
+		// get the value.
+		$value = get_option( $option_name );
+
+		// bail if value is not a string.
+		if ( ! is_string( $value ) ) {
+			return '';
+		}
+
+		// bail if the value is already decrypted during reading.
+		if ( false !== has_filter( 'option_' . $option_name, array( $this, 'decrypt_value' ) ) ) {
+			return $value;
+		}
+
+		// return the decrypted value.
+		return $this->decrypt_value( $value );
 	}
 
 	/**
@@ -800,7 +828,7 @@ class GoogleDrive extends Service_Base implements Service {
 		// if direct input is used, get the codes from the request.
 		if ( $this->is_mode( 'direct_input' ) ) {
 			// get the state.
-			$state = filter_input( INPUT_GET, 'state', FILTER_SANITIZE_STRING );
+			$state = sanitize_text_field( (string) filter_input( INPUT_GET, 'state', FILTER_UNSAFE_RAW ) );
 
 			// bail if state is empty.
 			if ( empty( $state ) ) {
@@ -824,7 +852,7 @@ class GoogleDrive extends Service_Base implements Service {
 
 			// initiate the client object.
 			$client = new \ExternalFilesFromGoogleDrive\Dependencies\Google\Client();
-			$client->setClientId( Crypt::get_instance()->decrypt( $this->get_client_id() ) );
+			$client->setClientId( $this->get_client_id() );
 			$client->setClientSecret( $this->get_client_secret() );
 			$client->setRedirectUri( $this->get_real_redirect_uri() );
 
@@ -1027,7 +1055,7 @@ class GoogleDrive extends Service_Base implements Service {
 			$entry['file']          = $file_obj->getId();
 			$entry['filesize']      = absint( $file_obj->getSize() );
 			$entry['mime-type']     = $mime_type['type'];
-			$entry['icon']          = '<img src="' . esc_url( $file_obj->getIconLink() ) . '" alt="">';
+			$entry['icon']          = '<img src="' . esc_url( (string) $file_obj->getIconLink() ) . '" alt="">';
 			$entry['last-modified'] = Helper::get_format_date_time( gmdate( 'Y-m-d H:i:s', absint( strtotime( $file_obj->getCreatedTime() ) ) ) );
 			$entry['preview']       = $thumbnail;
 
@@ -1231,12 +1259,12 @@ class GoogleDrive extends Service_Base implements Service {
 			}
 
 			// do not query for trashed files.
-			if ( 1 !== absint( get_user_meta( $user->ID, 'eml_google_drive_show_trashed', true ) ) ) {
+			if ( 1 !== absint( Crypt::get_instance()->decrypt( (string) get_user_meta( $user->ID, 'efml_google_drive_show_trashed', true ) ) ) ) {
 				$q[] = 'trashed = false';
 			}
 
 			// do only query for my own files, not shared files.
-			if ( 1 !== absint( get_user_meta( $user->ID, 'eml_google_drive_show_shared', true ) ) ) {
+			if ( 1 !== absint( Crypt::get_instance()->decrypt( (string) get_user_meta( $user->ID, 'efml_google_drive_show_shared', true ) ) ) ) {
 				$q[] = "'me' in owners";
 			}
 		}
@@ -1551,8 +1579,12 @@ class GoogleDrive extends Service_Base implements Service {
 				?>
 				<a href="#" class="easy-dialog-for-wordpress button button-secondary" data-dialog="<?php echo esc_attr( Helper::get_json( $this->get_disconnect_dialog() ) ); ?>"><?php echo esc_html__( 'Disconnect', 'external-files-from-google-drive' ); ?></a><br><br>
 				<?php
-				/* translators: %1$s will be replaced by a date and time. */
-				echo wp_kses_post( sprintf( __( 'Created at %1$s', 'external-files-from-google-drive' ), Helper::get_format_date_time( gmdate( 'Y-m-d H:i', absint( $access_token['created'] ) ) ) ) . '<br><br><a href="' . Directory_Listing::get_instance()->get_view_directory_url( $this ) . '" class="button button-secondary">' . __( 'View and import files', 'external-files-from-google-drive' ) . '</a>' );
+				// show the creation date of the token, if set.
+				if ( ! empty( $access_token['created'] ) ) {
+					/* translators: %1$s will be replaced by a date and time. */
+					echo wp_kses_post( sprintf( __( 'Created at %1$s', 'external-files-from-google-drive' ), Helper::get_format_date_time( gmdate( 'Y-m-d H:i', absint( $access_token['created'] ) ) ) ) . '<br><br>' );
+				}
+				echo wp_kses_post( '<a href="' . Directory_Listing::get_instance()->get_view_directory_url( $this ) . '" class="button button-secondary">' . __( 'View and import files', 'external-files-from-google-drive' ) . '</a>' );
 			}
 
 			// show settings table.
@@ -1844,11 +1876,18 @@ class GoogleDrive extends Service_Base implements Service {
 	/**
 	 * Add direct input of credentials as additional mode for Google Drive connection settings.
 	 *
-	 * @param array<string,string> $modes The list of modes.
+	 * @param array<string,string> $modes    The list of modes.
+	 * @param object|null          $instance The service object, which requests the modes.
 	 *
 	 * @return array<string,string>
 	 */
-	public function add_direct_input_mode( array $modes ): array {
+	public function add_direct_input_mode( array $modes, ?object $instance = null ): array {
+		// bail if this is not our service.
+		if ( ! is_null( $instance ) && $instance !== $this ) {
+			return $modes;
+		}
+
+		// add the mode.
 		$modes['direct_input'] = __( 'Direct input of API credentials', 'external-files-from-google-drive' );
 		return $modes;
 	}
