@@ -411,7 +411,23 @@ class GoogleDrive extends externalFilesFromGoogleDriveTests {
 
 		// test 2: Google Drive returns an error.
 		$this->connect();
-		$this->add_google_response( 'GET', 'files', 403, array( 'error' => array( 'code' => 403, 'message' => 'Forbidden', 'errors' => array( array( 'message' => 'Forbidden', 'reason' => 'forbidden' ) ) ) ) );
+		$this->add_google_response(
+			'GET',
+			'files',
+			403,
+			array(
+				'error' => array(
+					'code'    => 403,
+					'message' => 'Forbidden',
+					'errors'  => array(
+						array(
+							'message' => 'Forbidden',
+							'reason'  => 'forbidden',
+						),
+					),
+				),
+			)
+		);
 		$this->assertEquals( array(), $this->get_google_drive()->get_directory_listing( 'Google Drive Directory Listing' ) );
 		$this->assertStringContainsString( 'List of files could not be loaded', $this->get_log_entries()[0]['log'] );
 	}
@@ -664,8 +680,28 @@ class GoogleDrive extends externalFilesFromGoogleDriveTests {
 		$this->assertTrue( $this->get_google_drive()->is_file_public( new DriveFile( array( 'id' => 'public1' ) ), $service ) );
 
 		// test 3: error.
-		$this->add_google_response( 'GET', 'files/error1/permissions', 404, array( 'error' => array( 'code' => 404, 'message' => 'Not found' ) ) );
-		$this->assertFalse( $this->get_google_drive()->is_file_public( new DriveFile( array( 'id' => 'error1', 'name' => 'error.jpg' ) ), $service ) );
+		$this->add_google_response(
+			'GET',
+			'files/error1/permissions',
+			404,
+			array(
+				'error' => array(
+					'code'    => 404,
+					'message' => 'Not found',
+				),
+			)
+		);
+		$this->assertFalse(
+			$this->get_google_drive()->is_file_public(
+				new DriveFile(
+					array(
+						'id'   => 'error1',
+						'name' => 'error.jpg',
+					)
+				),
+				$service
+			)
+		);
 		$this->assertNotEmpty( $this->get_log_entries( 'error.jpg' ) );
 	}
 

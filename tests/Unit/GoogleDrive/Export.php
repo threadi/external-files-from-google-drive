@@ -38,7 +38,18 @@ class Export extends externalFilesFromGoogleDriveTests {
 	 */
 	private function add_upload_responses( int $status = 200 ): void {
 		$this->add_google_response( 'POST', $this->upload_url, 200, '', array( 'uploadType' => 'resumable' ), array( 'Location' => $this->upload_url . '?uploadType=resumable&upload_id=upload123' ) );
-		$this->add_google_response( 'PUT', $this->upload_url, $status, 200 === $status ? array( 'id' => 'new123' ) : array( 'error' => array( 'code' => $status, 'message' => 'Error' ) ), array( 'upload_id' => 'upload123' ) );
+		$this->add_google_response(
+			'PUT',
+			$this->upload_url,
+			$status,
+			200 === $status ? array( 'id' => 'new123' ) : array(
+				'error' => array(
+					'code'    => $status,
+					'message' => 'Error',
+				),
+			),
+			array( 'upload_id' => 'upload123' )
+		);
 	}
 
 	/**
@@ -117,7 +128,18 @@ class Export extends externalFilesFromGoogleDriveTests {
 	public function test_export_file_without_upload_url(): void {
 		$this->connect();
 		$attachment_id = $this->create_local_attachment();
-		$this->add_google_response( 'POST', $this->upload_url, 401, array( 'error' => array( 'code' => 401, 'message' => 'Unauthorized' ) ), array( 'uploadType' => 'resumable' ) );
+		$this->add_google_response(
+			'POST',
+			$this->upload_url,
+			401,
+			array(
+				'error' => array(
+					'code'    => 401,
+					'message' => 'Unauthorized',
+				),
+			),
+			array( 'uploadType' => 'resumable' )
+		);
 
 		$this->assertFalse( $this->get_export()->export_file( $attachment_id, 'https://drive.google.com/drive/', array() ) );
 		$this->assertStringContainsString( 'File could not be uploaded to Google Drive', $this->get_log_entries( 'https://drive.google.com/drive/' )[0]['log'] );
@@ -174,7 +196,17 @@ class Export extends externalFilesFromGoogleDriveTests {
 
 		// test 2: Google Drive returns an error.
 		update_post_meta( $attachment_id, 'efml_google_drive_file_id', 'new123' );
-		$this->add_google_response( 'DELETE', 'files/new123', 404, array( 'error' => array( 'code' => 404, 'message' => 'File not found' ) ) );
+		$this->add_google_response(
+			'DELETE',
+			'files/new123',
+			404,
+			array(
+				'error' => array(
+					'code'    => 404,
+					'message' => 'File not found',
+				),
+			)
+		);
 		$this->assertFalse( $this->get_export()->delete_exported_file( 'https://example.com/file', array(), $attachment_id ) );
 		$this->assertStringContainsString( 'could not be delete', $this->get_log_entries( 'https://example.com/file' )[0]['log'] );
 

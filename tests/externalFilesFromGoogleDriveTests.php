@@ -58,6 +58,15 @@ abstract class externalFilesFromGoogleDriveTests extends WP_UnitTestCase {
 	private static array $google_requests = array();
 
 	/**
+	 * List of requests during the actual test, for which no response is configured.
+	 *
+	 * The tests fail with them in tear_down(), as the code under test could catch the failure of the request.
+	 *
+	 * @var array<int,string>
+	 */
+	private static array $unexpected_requests = array();
+
+	/**
 	 * Prepare the test environment for each test class.
 	 *
 	 * @return void
@@ -113,10 +122,11 @@ abstract class externalFilesFromGoogleDriveTests extends WP_UnitTestCase {
 		$this->reset_google_drive();
 
 		// reset the lists for the mocks.
-		self::$http_responses   = array();
-		self::$http_requests    = array();
-		self::$google_responses = array();
-		self::$google_requests  = array();
+		self::$http_responses      = array();
+		self::$http_requests       = array();
+		self::$google_responses    = array();
+		self::$google_requests     = array();
+		self::$unexpected_requests = array();
 
 		// answer all requests to the Google API locally (the hooks are restored after each test).
 		add_filter( 'efmlgd_google_drive_client', array( self::class, 'replace_http_client' ), PHP_INT_MAX );
@@ -128,6 +138,7 @@ abstract class externalFilesFromGoogleDriveTests extends WP_UnitTestCase {
 	 * @return void
 	 */
 	public function tear_down(): void {
+		$this->assertEmpty( self::$unexpected_requests, 'Requests without configured response: ' . implode( ', ', self::$unexpected_requests ) );
 		$this->do_logout();
 		parent::tear_down();
 	}
@@ -193,6 +204,7 @@ abstract class externalFilesFromGoogleDriveTests extends WP_UnitTestCase {
 		}
 
 		// show error if no response is configured for this request.
+		self::$unexpected_requests[] = $request->getMethod() . ' ' . $request->getUri();
 		self::fail( 'Trying a request to the Google API, which is not configured in the test: ' . $request->getMethod() . ' ' . $request->getUri() );
 	}
 

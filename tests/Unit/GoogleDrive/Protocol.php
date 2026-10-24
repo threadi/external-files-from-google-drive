@@ -143,7 +143,23 @@ class Protocol extends externalFilesFromGoogleDriveTests {
 	 */
 	public function test_get_url_infos_with_error(): void {
 		$this->connect();
-		$this->add_google_response( 'GET', 'files/file1', 404, array( 'error' => array( 'code' => 404, 'message' => 'File not found: file1.', 'errors' => array( array( 'message' => 'File not found: file1.', 'reason' => 'notFound' ) ) ) ) );
+		$this->add_google_response(
+			'GET',
+			'files/file1',
+			404,
+			array(
+				'error' => array(
+					'code'    => 404,
+					'message' => 'File not found: file1.',
+					'errors'  => array(
+						array(
+							'message' => 'File not found: file1.',
+							'reason'  => 'notFound',
+						),
+					),
+				),
+			)
+		);
 
 		$this->assertEquals( array(), $this->get_protocol( $this->mark . 'file1' )->get_url_infos() );
 		$this->assertStringContainsString( 'could not download the requested file', $this->get_log_entries( $this->mark . 'file1' )[0]['log'] );
@@ -172,8 +188,24 @@ class Protocol extends externalFilesFromGoogleDriveTests {
 				),
 			)
 		);
-		$this->add_google_response( 'GET', 'files/folder1', 200, array( 'id' => 'folder1', 'name' => 'Photos' ) );
-		$this->add_google_response( 'GET', 'files/folder2', 200, array( 'id' => 'folder2', 'name' => 'Other' ) );
+		$this->add_google_response(
+			'GET',
+			'files/folder1',
+			200,
+			array(
+				'id'   => 'folder1',
+				'name' => 'Photos',
+			)
+		);
+		$this->add_google_response(
+			'GET',
+			'files/folder2',
+			200,
+			array(
+				'id'   => 'folder2',
+				'name' => 'Other',
+			)
+		);
 		$this->add_google_file( 'file1', 'example.jpg', $this->get_example_content() );
 
 		$infos = $this->get_protocol( $this->mark . 'folder1/' )->get_url_infos();
@@ -204,7 +236,15 @@ class Protocol extends externalFilesFromGoogleDriveTests {
 			$this->add_google_file( 'file' . $i, 'example' . $i . '.jpg', $this->get_example_content() );
 		}
 		$this->add_file_list( $files );
-		$this->add_google_response( 'GET', 'files/folder1', 200, array( 'id' => 'folder1', 'name' => 'Photos' ) );
+		$this->add_google_response(
+			'GET',
+			'files/folder1',
+			200,
+			array(
+				'id'   => 'folder1',
+				'name' => 'Photos',
+			)
+		);
 
 		$infos = $this->get_protocol( $this->mark . 'folder1/' )->get_url_infos();
 		remove_filter( 'wp_doing_ajax', '__return_true' );
@@ -265,7 +305,17 @@ class Protocol extends externalFilesFromGoogleDriveTests {
 	 */
 	public function test_get_url_infos_import_all_with_error(): void {
 		$this->connect();
-		$this->add_google_response( 'GET', 'files', 500, array( 'error' => array( 'code' => 500, 'message' => 'Error' ) ) );
+		$this->add_google_response(
+			'GET',
+			'files',
+			500,
+			array(
+				'error' => array(
+					'code'    => 500,
+					'message' => 'Error',
+				),
+			)
+		);
 
 		$this->assertEquals( array(), $this->get_protocol( $this->mark . 'eflm-import-all' )->get_url_infos() );
 	}

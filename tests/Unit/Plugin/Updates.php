@@ -99,7 +99,21 @@ class Updates extends externalFilesFromGoogleDriveTests {
 	 * @return void
 	 */
 	public function test_check(): void {
-		$this->add_http_response( $this->github_api_url, 200, array( 'Content-Type' => 'application/json' ), $this->get_release_json( 'v99.0.0', array( array( 'content_type' => 'text/plain', 'browser_download_url' => 'https://example.com/readme.txt' ), $this->get_zip_asset( '99.0.0' ) ) ) );
+		$this->add_http_response(
+			$this->github_api_url,
+			200,
+			array( 'Content-Type' => 'application/json' ),
+			$this->get_release_json(
+				'v99.0.0',
+				array(
+					array(
+						'content_type'         => 'text/plain',
+						'browser_download_url' => 'https://example.com/readme.txt',
+					),
+					$this->get_zip_asset( '99.0.0' ),
+				)
+			)
+		);
 
 		$update = $this->check();
 
@@ -154,7 +168,20 @@ class Updates extends externalFilesFromGoogleDriveTests {
 
 		// test 2: without ZIP asset.
 		\ExternalFilesFromGoogleDrive\Plugin\Updates::get_instance()->delete_cache();
-		$this->add_http_response( $this->github_api_url, 200, array(), $this->get_release_json( 'v99.0.0', array( array( 'content_type' => 'text/plain', 'browser_download_url' => 'https://example.com/readme.txt' ) ) ) );
+		$this->add_http_response(
+			$this->github_api_url,
+			200,
+			array(),
+			$this->get_release_json(
+				'v99.0.0',
+				array(
+					array(
+						'content_type'         => 'text/plain',
+						'browser_download_url' => 'https://example.com/readme.txt',
+					),
+				)
+			)
+		);
 		$this->assertFalse( $this->check() );
 	}
 
