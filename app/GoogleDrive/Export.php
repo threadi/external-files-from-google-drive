@@ -98,9 +98,6 @@ class Export extends Export_Base {
 			return false;
 		}
 
-		// set defer for the client to accept big files.
-		$client->setDefer( true );
-
 		// connect to Google Drive.
 		$service = new Drive( $client );
 
@@ -109,10 +106,29 @@ class Export extends Export_Base {
 			'name' => basename( $file_path ),
 		);
 
-		// add the directory, if set.
-		if ( ! empty( $credentials['directory'] ) ) {
+		// add the directory, if set and if it is not the root of Google Drive.
+		if ( ! empty( $credentials['directory'] ) && $google_drive_object->get_default_directory() !== $credentials['directory'] ) {
 			$query['parents'] = array( str_replace( '/', '', $credentials['directory'] ) );
 		}
+
+		// get the folders of the target below the directory (e.g., for the folder structure of exports).
+		$folders = $this->get_folders_from_target( $target, $credentials );
+
+		// get or create the folders and use the last one as parent of the file.
+		if ( ! empty( $folders ) ) {
+			try {
+				$query['parents'] = array( $this->get_folder_id( $service, isset( $query['parents'] ) ? $query['parents'][0] : 'root', $folders ) );
+			} catch ( Exception $e ) {
+				// log this event.
+				Log::get_instance()->create( __( 'Folder for the file could not be created in Google Drive. Error:', 'external-files-from-google-drive' ) . ' <code>' . esc_html( $e->getMessage() ) . '</code>', $target, 'error' );
+
+				// do nothing more.
+				return false;
+			}
+		}
+
+		// set defer for the client to accept big files.
+		$client->setDefer( true );
 
 		// set the file metadata.
 		$file_meta_data = new DriveFile( $query );
@@ -234,5 +250,103 @@ class Export extends Export_Base {
 			// return false as we do not get anything.
 			return false;
 		}
+	}
+
+	/**
+	 * Return whether this service supports folders for exported files.
+	 *
+	 * @return bool
+	 */
+	public function supports_folders(): bool {
+		return true;
+	}
+
+	/**
+	 * Return the folders of the given target below the directory of the external source.
+	 *
+	 * Returns an empty list if the target is located directly in the directory of the external source
+	 * or not located in it at all.
+	 *
+	 * @param string              $target The target path of the file.
+	 * @param array<string,mixed> $credentials The credentials of the external source.
+	 *
+	 * @return array<int,string>
+	 */
+	private function get_folders_from_target( string $target, array $credentials ): array {
+		// get the directory from the credentials.
+		$directory = trailingslashit( isset( $credentials['directory'] ) && is_string( $credentials['directory'] ) ? $credentials['directory'] : '' );
+
+		// bail if the target is not located in the directory.
+		if ( ! str_starts_with( $target, $directory ) ) {
+			return array();
+		}
+
+		// get the folders of the target below the directory.
+		$folders = array();
+		foreach ( explode( '/', dirname( substr( $target, strlen( $directory ) ) ) ) as $folder ) {
+			// bail on relative folders.
+			if ( '..' === $folder ) {
+				return array();
+			}
+
+			// skip empty folders.
+			if ( '' === $folder || '.' === $folder ) {
+				continue;
+			}
+
+			// add the folder.
+			$folders[] = $folder;
+		}
+
+		// return the list of folders.
+		return $folders;
+	}
+
+	/**
+	 * Return the ID of the last of the given folders below the given parent folder.
+	 *
+	 * Missing folders are created.
+	 *
+	 * @param Drive             $service The Google Drive service.
+	 * @param string            $parent_id The ID of the parent folder.
+	 * @param array<int,string> $folders The list of folder names.
+	 *
+	 * @return string
+	 * @throws Exception Could throw exception.
+	 */
+	private function get_folder_id( Drive $service, string $parent_id, array $folders ): string {
+		foreach ( $folders as $folder ) {
+			// search the folder in the parent folder.
+			$result = $service->files->listFiles(
+				array(
+					'q'        => "name = '" . str_replace( array( '\\', "'" ), array( '\\\\', "\\'" ), $folder ) . "' and mimeType = 'application/vnd.google-apps.folder' and '" . $parent_id . "' in parents and trashed = false",
+					'fields'   => 'files(id)',
+					'pageSize' => 1,
+				)
+			);
+
+			// use the existing folder.
+			$files = $result->getFiles();
+			if ( ! empty( $files ) ) {
+				$parent_id = (string) $files[0]->getId();
+				continue;
+			}
+
+			// create the folder.
+			$created_folder = $service->files->create(
+				new DriveFile(
+					array(
+						'name'     => $folder,
+						'mimeType' => 'application/vnd.google-apps.folder',
+						'parents'  => array( $parent_id ),
+					)
+				),
+				array( 'fields' => 'id' )
+			);
+			$parent_id      = (string) $created_folder->getId();
+		}
+
+		// return the ID of the last folder.
+		return $parent_id;
 	}
 }

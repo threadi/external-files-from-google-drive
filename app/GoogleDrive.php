@@ -428,6 +428,15 @@ class GoogleDrive extends Service_Base implements Service {
 	}
 
 	/**
+	 * Return the name of the main directory, which is used for the root of Google Drive.
+	 *
+	 * @return string
+	 */
+	public function get_default_directory(): string {
+		return $this->default_directory;
+	}
+
+	/**
 	 * Return access token depending on the actual mode.
 	 *
 	 * @return array<string,mixed>

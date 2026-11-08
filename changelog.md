@@ -6,6 +6,11 @@
 
 - Added possibility to define the API credentials for the direct input via constants, e.g. in wp-config.php (requires External Files in Media Library 5.7.0)
 - Added documentation for the constants in docs/constants.md
+- Added support for the folder structure of exported files, missing folders are created (requires External Files in Media Library 5.7.0)
+
+### Fixed
+
+- Fixed export of files into the main directory of Google Drive
 
 ## [1.3.0] - 24.10.2026
 
