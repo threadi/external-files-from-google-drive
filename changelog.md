@@ -1,5 +1,12 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+
+- Added possibility to define the API credentials for the direct input via constants, e.g. in wp-config.php (requires External Files in Media Library 5.7.0)
+- Added documentation for the constants in docs/constants.md
+
 ## [1.3.0] - 24.10.2026
 
 ### Added

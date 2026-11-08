@@ -52,6 +52,16 @@ class GoogleDrive extends Service_Base implements Service {
 	protected string $name = 'google-drive';
 
 	/**
+	 * Marker whether the values of the constants are values of the fields of this service.
+	 *
+	 * Disabled, as only the API credentials for the direct input could be defined via constants, which are no fields.
+	 * Requires "External Files in Media Library" 5.7.0 or newer.
+	 *
+	 * @var bool
+	 */
+	protected bool $constants_in_fields = false;
+
+	/**
 	 * The public label.
 	 *
 	 * @var string
@@ -288,32 +298,48 @@ class GoogleDrive extends Service_Base implements Service {
 				$description = '<strong>' . __( 'You need an SSL-certificate for your public domain to use this method. Local domains are not allowed by Google.', 'external-files-from-google-drive' ) . '</strong>';
 			}
 
-			// add setting for the client ID.
-			$setting = $settings_obj->add_setting( 'eml_google_drive_credential_client_id' );
-			$setting->set_section( $section );
-			$setting->set_show_in_rest( false );
-			$setting->prevent_export( true );
-			$setting->set_read_callback( array( $this, 'decrypt_value' ) );
-			$setting->set_save_callback( array( $this, 'encrypt_value' ) );
-			$field = new Text( $settings_obj );
-			$field->set_title( __( 'Client ID', 'external-files-from-google-drive' ) );
-			$field->set_description( $description );
-			$field->set_placeholder( 'xy-apps.googleusercontent.com' );
-			$field->set_readonly( ! $this->is_direct_input_available() );
-			$setting->set_field( $field );
+			// show hint if the value is defined via constant, otherwise the setting.
+			if ( $this->show_constant_hint( $section, 'client_id', __( 'Client ID', 'external-files-from-google-drive' ) ) ) {
+				// show the redirect URL, which must be set in the OAuth client.
+				$setting = $settings_obj->add_setting( 'eml_google_drive_credential_redirect_hint' );
+				$setting->set_section( $section );
+				$setting->set_show_in_rest( false );
+				$setting->prevent_export( true );
+				$field = new TextInfo( $settings_obj );
+				$field->set_title( __( 'Redirect URL', 'external-files-from-google-drive' ) );
+				$field->set_description( ! $this->is_direct_input_available() ? $description : __( 'Enter the following as the redirect URL in the OAuth 2.0 client of your Google Cloud project:', 'external-files-from-google-drive' ) . ' <code class="copy-text-attr" data-text="' . esc_attr( $this->get_real_redirect_uri() ) . '" data-copied-label="' . esc_attr__( 'Copied', 'external-files-from-google-drive' ) . '">' . esc_html( $this->get_real_redirect_uri() ) . '</code>' );
+				$setting->set_field( $field );
+			} else {
+				// add setting for the client ID.
+				$setting = $settings_obj->add_setting( 'eml_google_drive_credential_client_id' );
+				$setting->set_section( $section );
+				$setting->set_show_in_rest( false );
+				$setting->prevent_export( true );
+				$setting->set_read_callback( array( $this, 'decrypt_value' ) );
+				$setting->set_save_callback( array( $this, 'encrypt_value' ) );
+				$field = new Text( $settings_obj );
+				$field->set_title( __( 'Client ID', 'external-files-from-google-drive' ) );
+				$field->set_description( $description );
+				$field->set_placeholder( 'xy-apps.googleusercontent.com' );
+				$field->set_readonly( ! $this->is_direct_input_available() );
+				$setting->set_field( $field );
+			}
 
-			// add setting for the client secret.
-			$setting = $settings_obj->add_setting( 'eml_google_drive_credential_client_secret' );
-			$setting->set_section( $section );
-			$setting->set_show_in_rest( false );
-			$setting->prevent_export( true );
-			$setting->set_read_callback( array( $this, 'decrypt_value' ) );
-			$setting->set_save_callback( array( $this, 'encrypt_value' ) );
-			$field = new Password( $settings_obj );
-			$field->set_title( __( 'Client Secret', 'external-files-from-google-drive' ) );
-			$field->set_placeholder( 'AbCdEfG' );
-			$field->set_readonly( ! $this->is_direct_input_available() );
-			$setting->set_field( $field );
+			// show hint if the value is defined via constant, otherwise the setting.
+			if ( ! $this->show_constant_hint( $section, 'client_secret', __( 'Client Secret', 'external-files-from-google-drive' ) ) ) {
+				// add setting for the client secret.
+				$setting = $settings_obj->add_setting( 'eml_google_drive_credential_client_secret' );
+				$setting->set_section( $section );
+				$setting->set_show_in_rest( false );
+				$setting->prevent_export( true );
+				$setting->set_read_callback( array( $this, 'decrypt_value' ) );
+				$setting->set_save_callback( array( $this, 'encrypt_value' ) );
+				$field = new Password( $settings_obj );
+				$field->set_title( __( 'Client Secret', 'external-files-from-google-drive' ) );
+				$field->set_placeholder( 'AbCdEfG' );
+				$field->set_readonly( ! $this->is_direct_input_available() );
+				$setting->set_field( $field );
+			}
 
 			// Connect/Disconnect-Button, wie in den anderen Modi.
 			$setting = $settings_obj->add_setting( 'eml_google_drive_connector' );
@@ -322,8 +348,8 @@ class GoogleDrive extends Service_Base implements Service {
 			$setting->prevent_export( true );
 
 			$access_token         = $this->get_access_token();
-			$custom_client_id     = get_option( 'eml_google_drive_credential_client_id' );
-			$custom_client_secret = get_option( 'eml_google_drive_credential_client_secret' );
+			$custom_client_id     = $this->get_credential( 'eml_google_drive_credential_client_id' );
+			$custom_client_secret = $this->get_credential( 'eml_google_drive_credential_client_secret' );
 
 			$field = new Button( $settings_obj );
 			$field->set_title( __( 'API connection', 'external-files-from-google-drive' ) );
@@ -632,6 +658,12 @@ class GoogleDrive extends Service_Base implements Service {
 	 * @return string
 	 */
 	private function get_credential( string $option_name ): string {
+		// use the value of the constant, if set.
+		$constant_value = $this->get_constant_value_if_supported( str_replace( 'eml_google_drive_credential_', '', $option_name ) );
+		if ( ! is_null( $constant_value ) ) {
+			return $constant_value;
+		}
+
 		// get the value.
 		$value = get_option( $option_name );
 
@@ -1934,6 +1966,84 @@ class GoogleDrive extends Service_Base implements Service {
 
 		// return encrypted string.
 		return Crypt::get_instance()->decrypt( $value );
+	}
+
+	/**
+	 * Return the definitions of the values, which could be defined via constants.
+	 *
+	 * Google Drive is using OAuth, so only the API credentials for the direct input could be defined via constants.
+	 * The tokens are saved in the database, as they will be refreshed regularly.
+	 *
+	 * @return array<string,array<string,mixed>>
+	 */
+	public function get_constant_field_definitions(): array {
+		// bail if this service does not support constants.
+		if ( ! $this->is_fields_via_constants_enabled() ) {
+			return array();
+		}
+
+		// return the definitions.
+		return array(
+			'client_id'     => array(
+				'name'       => 'client_id',
+				'type'       => 'text',
+				'label'      => __( 'Client ID', 'external-files-from-google-drive' ),
+				'credential' => true,
+			),
+			'client_secret' => array(
+				'name'       => 'client_secret',
+				'type'       => 'password',
+				'label'      => __( 'Client Secret', 'external-files-from-google-drive' ),
+				'credential' => true,
+			),
+		);
+	}
+
+	/**
+	 * Return the mode, which is used if the credentials are defined via constants: the direct input of API credentials.
+	 *
+	 * @return string
+	 */
+	protected function get_mode_for_constants(): string {
+		return 'direct_input';
+	}
+
+	/**
+	 * Return the value of a field defined via constant, if the main plugin supports this.
+	 *
+	 * Requires "External Files in Media Library" 5.7.0 or newer.
+	 *
+	 * @param string $field_name The name of the field.
+	 *
+	 * @return string|null
+	 */
+	private function get_constant_value_if_supported( string $field_name ): ?string {
+		// bail if the main plugin does not support constants.
+		if ( ! method_exists( $this, 'get_constant_value' ) ) { // @phpstan-ignore function.alreadyNarrowedType
+			return null;
+		}
+
+		// return the value.
+		return $this->get_constant_value( $field_name );
+	}
+
+	/**
+	 * Show a non-editable hint instead of a setting, if the value of the given field is defined via constant.
+	 *
+	 * @param Section $section    The section for the setting.
+	 * @param string  $field_name The name of the field.
+	 * @param string  $title      The title of the setting.
+	 *
+	 * @return bool True if the hint has been added, false if the setting should be added.
+	 */
+	protected function show_constant_hint( Section $section, string $field_name, string $title ): bool {
+		// bail if the main plugin does not support this (requires "External Files in Media Library" 5.7.0 or newer).
+		if ( ! method_exists( $this, 'add_constant_hint_setting' ) ) { // @phpstan-ignore function.alreadyNarrowedType
+			return false;
+		}
+
+		// add the hint, if the value is defined via constant.
+		return $this->add_constant_hint_setting( $section, $field_name, $title );
 	}
 
 	/**
