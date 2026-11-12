@@ -183,9 +183,6 @@ class Protocol extends Protocol_Base {
 					 */
 					do_action( 'efml_google_drive_directory_import_file_check', $directory );
 
-					// set counter for files which has been loaded from Google Drive.
-					$loaded_files = 0;
-
 					// save count of URLs.
 					update_option( 'eml_import_url_max_' . $user_id, count( $settings['files'] ) );
 
@@ -196,13 +193,6 @@ class Protocol extends Protocol_Base {
 							continue;
 						}
 
-						// bail if limit for loaded files has been reached and this is an AJAX-request.
-						if ( wp_doing_ajax() && $loaded_files >= absint( get_option( 'eml_google_drive_limit', 10 ) ) ) {
-							// set marker to load more.
-							$results['load_more'] = true;
-							continue;
-						}
-
 						// get the file data.
 						$entry = $this->get_file_data( $service, $file['file'] );
 
@@ -210,9 +200,6 @@ class Protocol extends Protocol_Base {
 						if ( empty( $entry ) ) {
 							continue;
 						}
-
-						// update the counter.
-						++$loaded_files;
 
 						// add file to the list.
 						$results[] = $entry;
@@ -255,6 +242,155 @@ class Protocol extends Protocol_Base {
 	 */
 	public function can_change_hosting(): bool {
 		return false;
+	}
+
+	/**
+	 * Return whether this protocol could list the files of a directory page by page.
+	 *
+	 * @return bool
+	 */
+	public function supports_file_list(): bool {
+		return true;
+	}
+
+	/**
+	 * Return the ID of the file or directory in the URL of this object.
+	 *
+	 * @return string
+	 */
+	private function get_file_id(): string {
+		return str_replace( GoogleDrive::get_instance()->get_url_mark(), '', $this->get_url() );
+	}
+
+	/**
+	 * Return whether the URL of this object is a directory or the import of all files.
+	 *
+	 * @return bool
+	 */
+	public function is_directory(): bool {
+		// get the ID.
+		$file_id = $this->get_file_id();
+
+		// return whether all files or a directory should be imported.
+		return 'eflm-import-all' === $file_id || str_ends_with( $file_id, '/' );
+	}
+
+	/**
+	 * Return one page of the files in the requested directory, in the main directory or of all files.
+	 *
+	 * Like the import of a directory: a folder contains only its own files, the main directory all files.
+	 *
+	 * @param string $cursor The cursor for the requested page.
+	 *
+	 * @return array{files: array<int,array{url: string, media-url?: string, filesize?: int, last-modified?: int}>, cursor: string}|false
+	 */
+	public function get_file_list( string $cursor ): array|false {
+		// get the Google Drive object.
+		$google_drive_obj = GoogleDrive::get_instance();
+
+		// get the access token of the actual user.
+		$access_token = $google_drive_obj->get_access_token();
+
+		// bail if no access token is given.
+		if ( empty( $access_token ) ) {
+			Log::get_instance()->create( __( 'Access token missing to connect to Google Drive!', 'external-files-from-google-drive' ), esc_url( $this->get_url() ), 'error', 0, Import::get_instance()->get_identifier() );
+			return false;
+		}
+
+		// get the client.
+		$client = ( new Client( $access_token ) )->get_client();
+
+		// bail if client is not a Client object.
+		if ( ! $client instanceof \ExternalFilesFromGoogleDrive\Dependencies\Google\Client ) {
+			Log::get_instance()->create( __( 'Google Drive client could not be initiated!', 'external-files-from-google-drive' ), esc_url( $this->get_url() ), 'error', 0, Import::get_instance()->get_identifier() );
+			return false;
+		}
+
+		// connect to Google Drive.
+		$service = new Drive( $client );
+
+		// get the requested ID and the mode.
+		$file_id    = $this->get_file_id();
+		$import_all = 'eflm-import-all' === $file_id;
+		$folder_id  = ! $import_all && false === stripos( $file_id, $google_drive_obj->get_directory() ) ? rtrim( $file_id, '/' ) : '';
+
+		// collect the request query.
+		$query = array(
+			'fields'   => 'files(id,name,mimeType,parents,fileExtension,createdTime,modifiedTime,size,trashed),nextPageToken',
+			'pageSize' => min( 1000, $this->get_file_list_page_size() ),
+			'orderBy'  => 'name_natural',
+		);
+
+		// filter the query like for the directory listing.
+		if ( ! $import_all ) {
+			/** This filter is documented in app/GoogleDrive.php */
+			$query = apply_filters( 'efmlgd_google_drive_query_params', $query, $file_id );
+		}
+
+		// load only the files of the requested folder.
+		if ( '' !== $folder_id ) {
+			$condition  = "'" . str_replace( array( '\\', "'" ), array( '\\\\', "\\'" ), $folder_id ) . "' in parents";
+			$query['q'] = empty( $query['q'] ) ? $condition : '(' . $query['q'] . ') and ' . $condition;
+		}
+
+		// set the token for the requested page.
+		if ( '' !== $cursor ) {
+			$query['pageToken'] = $cursor;
+		}
+
+		// get the page.
+		try {
+			$results = $service->files->listFiles( $query );
+		} catch ( Exception $e ) {
+			Log::get_instance()->create( __( 'List of files could not be loaded from Google Drive. Error:', 'external-files-from-google-drive' ) . ' <code>' . wp_json_encode( $e->getErrors() ) . '</code>', esc_url( $this->get_url() ), 'error', 0, Import::get_instance()->get_identifier() );
+			return false;
+		}
+
+		// get the files.
+		$files = $results->getFiles();
+		if ( ! $import_all ) {
+			/** This filter is documented in app/GoogleDrive.php */
+			$files = apply_filters( 'efmlgd_google_drive_files', $files );
+		}
+
+		// collect the files.
+		$list = array();
+		foreach ( $files as $file_obj ) {
+			// check the file like the import of all files (trashed files are hidden in the directory listing via the query).
+			if ( $import_all && ( $file_obj->getTrashed() || empty( $file_obj->getFileExtension() ) ) ) {
+				continue;
+			}
+			if ( ! $import_all ) {
+				$false = false;
+				/** This filter is documented in app/GoogleDrive.php */
+				if ( apply_filters( 'efmlgd_google_drive_hide_file', $false, $file_obj, $file_id ) ) {
+					continue;
+				}
+
+				// bail if file type is not allowed.
+				$mime_type = wp_check_filetype( $file_obj->getName() );
+				if ( empty( $mime_type['type'] ) ) {
+					continue;
+				}
+			}
+
+			// add the file, which the import saves with its public URL, if it is public.
+			$list[] = array(
+				'url'           => $google_drive_obj->get_url_mark() . $file_obj->getId(),
+				'media-url'     => $google_drive_obj->get_public_url_for_file_id( $file_obj->getId() ),
+				'filesize'      => absint( $file_obj->getSize() ),
+				'last-modified' => absint( strtotime( (string) $file_obj->getCreatedTime() ) ),
+			);
+		}
+
+		// get the token for the next page.
+		$token = (string) $results->getNextPageToken();
+
+		// return the page.
+		return array(
+			'files'  => $list,
+			'cursor' => $token !== $cursor ? $token : '',
+		);
 	}
 
 	/**

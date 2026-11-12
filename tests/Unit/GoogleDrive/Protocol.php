@@ -217,42 +217,66 @@ class Protocol extends externalFilesFromGoogleDriveTests {
 	}
 
 	/**
-	 * Test the limit of files during an import of a directory via AJAX.
+	 * Test the file list of a folder: only the files of the folder are requested, page by page.
 	 *
 	 * @return void
 	 */
-	public function test_get_url_infos_for_directory_with_limit(): void {
+	public function test_get_file_list_of_folder(): void {
 		$this->connect();
-		update_option( 'eml_google_drive_limit', 2 );
-		add_filter( 'wp_doing_ajax', '__return_true' );
-		$files = array();
-		for ( $i = 1; $i <= 4; $i++ ) {
-			$files[] = array(
-				'id'          => 'file' . $i,
-				'name'        => 'example' . $i . '.jpg',
-				'parents'     => array( 'folder1' ),
-				'createdTime' => '2024-01-02T03:04:05.000Z',
-			);
-			$this->add_google_file( 'file' . $i, 'example' . $i . '.jpg', $this->get_example_content() );
-		}
-		$this->add_file_list( $files );
+		$protocol = $this->get_protocol( $this->mark . 'folder1/' );
+		$this->assertTrue( $protocol->supports_file_list() );
+		$this->assertTrue( $protocol->is_directory() );
+		$this->assertTrue( $this->get_protocol( $this->mark . 'eflm-import-all' )->is_directory() );
+		$this->assertFalse( $this->get_protocol( $this->mark . 'file1' )->is_directory() );
+
+		// first page.
 		$this->add_google_response(
 			'GET',
-			'files/folder1',
+			'files',
 			200,
 			array(
-				'id'   => 'folder1',
-				'name' => 'Photos',
+				'files'         => array(
+					array(
+						'id'          => 'file1',
+						'name'        => 'example.jpg',
+						'parents'     => array( 'folder1' ),
+						'size'        => '706',
+						'createdTime' => '2024-01-02T03:04:05.000Z',
+					),
+					array(
+						'id'          => 'file2',
+						'name'        => 'document.unknown',
+						'parents'     => array( 'folder1' ),
+						'createdTime' => '2024-01-02T03:04:05.000Z',
+					),
+				),
+				'nextPageToken' => 'page-2',
 			)
 		);
+		$page = $protocol->get_file_list( '' );
+		$this->assertIsArray( $page );
+		$this->assertEquals( 'page-2', $page['cursor'] );
+		$this->assertCount( 1, $page['files'] );
+		$this->assertEquals( $this->mark . 'file1', $page['files'][0]['url'] );
+		$this->assertEquals( \ExternalFilesFromGoogleDrive\GoogleDrive::get_instance()->get_public_url_for_file_id( 'file1' ), $page['files'][0]['media-url'] );
+		$this->assertEquals( 706, $page['files'][0]['filesize'] );
 
-		$infos = $this->get_protocol( $this->mark . 'folder1/' )->get_url_infos();
-		remove_filter( 'wp_doing_ajax', '__return_true' );
+		// the request contains the folder and the page size.
+		$requests = $this->get_google_requests();
+		$request  = end( $requests );
+		$this->assertStringContainsString( "'folder1' in parents", $request['query']['q'] );
+		$this->assertEquals( '500', $request['query']['pageSize'] );
+	}
 
-		// the limit is used and a marker to load more is set.
-		$this->assertTrue( $infos['load_more'] );
-		unset( $infos['load_more'] );
-		$this->assertCount( 2, $infos );
+	/**
+	 * Test the file list with an error.
+	 *
+	 * @return void
+	 */
+	public function test_get_file_list_with_error(): void {
+		$this->connect();
+		$this->add_google_response( 'GET', 'files', 500, array( 'error' => array( 'code' => 500, 'message' => 'Error' ) ) );
+		$this->assertFalse( $this->get_protocol( $this->mark . 'eflm-import-all' )->get_file_list( '' ) );
 	}
 
 	/**

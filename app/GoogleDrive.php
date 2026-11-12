@@ -13,7 +13,6 @@ defined( 'ABSPATH' ) || exit;
 use easyDirectoryListingForWordPress\Init;
 use easySettingsForWordPress\Fields\Button;
 use easySettingsForWordPress\Fields\Checkbox;
-use easySettingsForWordPress\Fields\Number;
 use easySettingsForWordPress\Fields\Password;
 use easySettingsForWordPress\Fields\Text;
 use easySettingsForWordPress\Fields\TextInfo;
@@ -141,7 +140,7 @@ class GoogleDrive extends Service_Base implements Service {
 		add_action( 'init', array( $this, 'init_google_drive' ), 30 );
 
 		// bail if user has no capability for this service.
-		if ( ! defined( 'EFML_SYNC_RUNNING' ) && ! current_user_can( 'efml_cap_' . $this->get_name() ) ) {
+		if ( ! $this->is_import_allowed() ) {
 			return;
 		}
 
@@ -377,17 +376,6 @@ class GoogleDrive extends Service_Base implements Service {
 			}
 			$setting->set_field( $field );
 		}
-
-		// add setting to show also trashed files.
-		$setting = $settings_obj->add_setting( 'eml_google_drive_limit' );
-		$setting->set_section( $section );
-		$setting->set_type( 'integer' );
-		$setting->set_default( 10 );
-		$field = new Number( $settings_obj );
-		$field->set_title( __( 'Max. files to load per iteration', 'external-files-from-google-drive' ) );
-		$field->set_description( __( 'This value specifies how many files should be loaded during a directory import. The higher the value, the greater the likelihood of timeouts during import.', 'external-files-from-google-drive' ) );
-		$field->set_setting( $setting );
-		$setting->set_field( $field );
 
 		// add invisible setting for global access token.
 		$setting = $settings_obj->add_setting( 'eml_google_drive_access_tokens' );

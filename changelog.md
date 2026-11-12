@@ -10,10 +10,13 @@
 - Added support for private files, if the access token is saved for the complete website (requires External Files in Media Library 6.0.0): files are delivered via the cache of the proxy, which loads them via the API
 - Added link to Google Drive in the info box of each file (requires External Files in Media Library 6.0.0)
 - Added support for the connection test in the directory listing (requires External Files in Media Library 6.0.0)
+- Directories and the import of all files are imported file by file via the import of External Files in Media Library 6.0.0: also with tens of thousands of files, in the background if necessary
 
 ### Changed
 
 - Updated German translations, incl. the texts of earlier versions which were not translated yet
+- Removed the setting "Max. files to load per iteration", it is replaced by the import in the background
+- The import of a folder requests only the files of this folder from Google Drive
 
 ### Fixed
 
@@ -22,6 +25,7 @@
 - Fixed directory listing and import of more than 1000 files, only the first 1000 files have been used
 - Fixed high memory usage during the import of large files, they are now saved in parts into a local file
 
+- Fixed imports from Google Drive in scheduled tasks without logged-in user (e.g. via the queue or WP Cron)
 ## [1.3.0] - 24.10.2026
 
 ### Added
