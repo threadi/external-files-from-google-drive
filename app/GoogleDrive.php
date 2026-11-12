@@ -45,6 +45,13 @@ use WP_User;
  */
 class GoogleDrive extends Service_Base implements Service {
 	/**
+	 * The ID of the test file of the connection test.
+	 *
+	 * @var string
+	 */
+	private string $connection_test_file_id = '';
+
+	/**
 	 * The object name.
 	 *
 	 * @var string
@@ -2182,5 +2189,182 @@ class GoogleDrive extends Service_Base implements Service {
 
 		// otherwise use the global configuration URL.
 		return parent::get_config_url();
+	}
+
+	/**
+	 * Return whether this service supports the complete connection test (requires External Files in Media Library 6.0.0).
+	 *
+	 * @since 1.4.0 Available since 1.4.0.
+	 *
+	 * @return bool
+	 */
+	public function supports_connection_test(): bool {
+		return true;
+	}
+
+	/**
+	 * Return the Google Drive service object for the connection test.
+	 *
+	 * @return Drive
+	 * @throws \Exception If no client could be loaded (e.g. without access token).
+	 */
+	private function get_connection_test_service(): Drive {
+		// get the client.
+		$client = ( new Client( $this->get_access_token() ) )->get_client();
+
+		// bail if no client could be loaded.
+		if ( ! $client instanceof \ExternalFilesFromGoogleDrive\Dependencies\Google\Client ) {
+			throw new \Exception( esc_html__( 'Your website is not connected with Google Drive. Connect it in the settings first.', 'external-files-from-google-drive' ) );
+		}
+
+		// return the service object.
+		return new Drive( $client );
+	}
+
+	/**
+	 * Return the ID of the folder for the connection test, empty for the main folder.
+	 *
+	 * @return string
+	 */
+	private function get_connection_test_folder_id(): string {
+		// get the directory.
+		$directory = $this->get_connection_test_directory();
+
+		// return nothing for the main folder.
+		if ( '' === $directory || $this->get_default_directory() === $directory ) {
+			return '';
+		}
+
+		// return the ID like the export uses it.
+		return str_replace( '/', '', $directory );
+	}
+
+	/**
+	 * Log the given exception of the connection test and return a new exception with a short message.
+	 *
+	 * @param \Exception $e       The exception.
+	 * @param string     $message The short message.
+	 *
+	 * @return \Exception
+	 */
+	private function get_connection_test_exception( \Exception $e, string $message ): \Exception {
+		// log the details.
+		Log::get_instance()->create( esc_html( $message ) . ' <code>' . esc_html( $e->getMessage() ) . '</code>', $this->get_url_mark(), 'error' );
+
+		// return the exception with the short message.
+		return new \Exception( $message . ' ' . __( 'Check the log for details.', 'external-files-from-google-drive' ) );
+	}
+
+	/**
+	 * List the folder in Google Drive for the connection test.
+	 *
+	 * @since 1.4.0 Available since 1.4.0.
+	 *
+	 * @return string
+	 * @throws \Exception If the step failed.
+	 */
+	protected function test_connection_list(): string {
+		// get the service.
+		$service = $this->get_connection_test_service();
+
+		// create the query for one file of the folder.
+		$query = array(
+			'pageSize' => 1,
+			'fields'   => 'files(id)',
+		);
+		if ( '' !== $this->get_connection_test_folder_id() ) {
+			$query['q'] = "'" . $this->get_connection_test_folder_id() . "' in parents";
+		}
+
+		// list the folder.
+		try {
+			$service->files->listFiles( $query );
+		} catch ( \Exception $e ) {
+			throw $this->get_connection_test_exception( $e, __( 'The folder could not be read in Google Drive.', 'external-files-from-google-drive' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
+		}
+
+		// return the message.
+		return __( 'The folder could be read.', 'external-files-from-google-drive' );
+	}
+
+	/**
+	 * Upload the test file to Google Drive.
+	 *
+	 * @since 1.4.0 Available since 1.4.0.
+	 *
+	 * @param string $local_file The absolute path to the local test file.
+	 * @param string $file_name  The name of the test file.
+	 *
+	 * @return string
+	 * @throws \Exception If the step failed.
+	 */
+	protected function test_connection_upload( string $local_file, string $file_name ): string {
+		// get the service.
+		$service = $this->get_connection_test_service();
+
+		// set the metadata of the file.
+		$metadata = array(
+			'name' => $file_name,
+		);
+		if ( '' !== $this->get_connection_test_folder_id() ) {
+			$metadata['parents'] = array( $this->get_connection_test_folder_id() );
+		}
+
+		// upload the file.
+		try {
+			$result = $service->files->create(
+				new DriveFile( $metadata ),
+				array(
+					'data'       => (string) Helper::get_wp_filesystem()->get_contents( $local_file ),
+					'mimeType'   => 'text/plain',
+					'uploadType' => 'multipart',
+					'fields'     => 'id',
+				)
+			);
+		} catch ( \Exception $e ) {
+			throw $this->get_connection_test_exception( $e, __( 'The test file could not be uploaded to Google Drive.', 'external-files-from-google-drive' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
+		}
+
+		// save the ID for the next steps.
+		$this->connection_test_file_id = (string) $result->getId();
+
+		// return the internal URL of the file.
+		return $this->get_url_mark() . $this->connection_test_file_id;
+	}
+
+	/**
+	 * Return whether the test file is public available.
+	 *
+	 * @since 1.4.0 Available since 1.4.0.
+	 *
+	 * @param string $url The URL of the uploaded file.
+	 *
+	 * @return bool|null
+	 */
+	protected function test_connection_public( string $url ): ?bool {
+		try {
+			return $this->is_file_public( new DriveFile( array( 'id' => $this->connection_test_file_id ) ), $this->get_connection_test_service() );
+		} catch ( \Exception $e ) {
+			return false;
+		}
+	}
+
+	/**
+	 * Delete the test file in Google Drive.
+	 *
+	 * @since 1.4.0 Available since 1.4.0.
+	 *
+	 * @param string $url       The URL of the uploaded file.
+	 * @param string $file_name The name of the test file.
+	 *
+	 * @return void
+	 * @throws \Exception If the step failed.
+	 */
+	protected function test_connection_delete( string $url, string $file_name ): void {
+		try {
+			$this->get_connection_test_service()->files->delete( $this->connection_test_file_id );
+		} catch ( \Exception $e ) {
+			throw $this->get_connection_test_exception( $e, __( 'The test file could not be deleted in Google Drive.', 'external-files-from-google-drive' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
+		}
 	}
 }

@@ -9,6 +9,7 @@
 - Added support for the folder structure of exported files, missing folders are created (requires External Files in Media Library 6.0.0)
 - Added support for private files, if the access token is saved for the complete website (requires External Files in Media Library 6.0.0): files are delivered via the cache of the proxy, which loads them via the API
 - Added link to Google Drive in the info box of each file (requires External Files in Media Library 6.0.0)
+- Added support for the connection test in the directory listing (requires External Files in Media Library 6.0.0)
 
 ### Changed
 
