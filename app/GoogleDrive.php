@@ -55,7 +55,7 @@ class GoogleDrive extends Service_Base implements Service {
 	 * Marker whether the values of the constants are values of the fields of this service.
 	 *
 	 * Disabled, as only the API credentials for the direct input could be defined via constants, which are no fields.
-	 * Requires "External Files in Media Library" 5.7.0 or newer.
+	 * Requires "External Files in Media Library" 6.0.0 or newer.
 	 *
 	 * @var bool
 	 */
@@ -434,6 +434,17 @@ class GoogleDrive extends Service_Base implements Service {
 	 */
 	public function get_default_directory(): string {
 		return $this->default_directory;
+	}
+
+	/**
+	 * Return whether the access token is saved globally (and not per user).
+	 *
+	 * @since 1.4.0 Available since 1.4.0.
+	 *
+	 * @return bool
+	 */
+	public function is_access_token_global(): bool {
+		return $this->is_mode( 'global' ) || $this->is_mode( 'direct_input' );
 	}
 
 	/**
@@ -1171,6 +1182,17 @@ class GoogleDrive extends Service_Base implements Service {
 	}
 
 	/**
+	 * Return the URL of the web interface of Google Drive.
+	 *
+	 * @since 1.4.0 Available since 1.4.0.
+	 *
+	 * @return string
+	 */
+	public function get_platform_url(): string {
+		return 'https://drive.google.com/drive/my-drive';
+	}
+
+	/**
 	 * Return global actions.
 	 *
 	 * @return array<int,array<string,string>>
@@ -1182,7 +1204,7 @@ class GoogleDrive extends Service_Base implements Service {
 		// create our custom global actions.
 		$actions = array(
 			array(
-				'action' => 'location.href="https://drive.google.com/drive/my-drive";',
+				'action' => 'location.href="' . esc_url( $this->get_platform_url() ) . '";',
 				'label'  => __( 'Go to Google Drive', 'external-files-from-google-drive' ),
 			),
 			array(
@@ -2020,7 +2042,7 @@ class GoogleDrive extends Service_Base implements Service {
 	/**
 	 * Return the value of a field defined via constant, if the main plugin supports this.
 	 *
-	 * Requires "External Files in Media Library" 5.7.0 or newer.
+	 * Requires "External Files in Media Library" 6.0.0 or newer.
 	 *
 	 * @param string $field_name The name of the field.
 	 *
@@ -2046,7 +2068,7 @@ class GoogleDrive extends Service_Base implements Service {
 	 * @return bool True if the hint has been added, false if the setting should be added.
 	 */
 	protected function show_constant_hint( Section $section, string $field_name, string $title ): bool {
-		// bail if the main plugin does not support this (requires "External Files in Media Library" 5.7.0 or newer).
+		// bail if the main plugin does not support this (requires "External Files in Media Library" 6.0.0 or newer).
 		if ( ! method_exists( $this, 'add_constant_hint_setting' ) ) { // @phpstan-ignore function.alreadyNarrowedType
 			return false;
 		}

@@ -2,20 +2,18 @@
 # This file is distributed under the GPL-2.0-or-later.
 msgid ""
 msgstr ""
-"Project-Id-Version: External files from Google Drive in Media Library "
-"@@VersionNumber@@\n"
-"Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/external-files-"
-"from-google-drive\n"
-"POT-Creation-Date: 2026-03-29T10:47:04+00:00\n"
-"PO-Revision-Date: 2026-03-29 12:48+0200\n"
+"Project-Id-Version: External files from Google Drive in Media Library @@VersionNumber@@\n"
+"Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/external-files-from-google-drive\n"
+"POT-Creation-Date: 2026-11-12T15:00:00+00:00\n"
+"PO-Revision-Date: 2026-11-12 16:00+0100\n"
 "Last-Translator: \n"
 "Language-Team: \n"
 "Language: de_DE\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"X-Generator: Poedit 3.8\n"
 "X-Domain: external-files-from-google-drive\n"
+"X-Generator: Poedit 3.8\n"
 
 #. Plugin Name of the plugin
 #: external-files-from-google-drive.php
@@ -25,9 +23,7 @@ msgstr "Externe Dateien aus Google Drive in der Mediathek"
 #. Description of the plugin
 #: external-files-from-google-drive.php
 msgid "Extends External files in Media Library for usage of Google Drive."
-msgstr ""
-"Erweitert externe Dateien in der Mediathek für die Verwendung von Google "
-"Drive."
+msgstr "Erweitert externe Dateien in der Mediathek für die Verwendung von Google Drive."
 
 #. Author of the plugin
 #: external-files-from-google-drive.php
@@ -39,302 +35,471 @@ msgstr "Thomas Zwirner"
 msgid "https://www.thomaszwirner.de"
 msgstr "https://www.thomaszwirner.de"
 
-#: app/GoogleDrive.php:130
+#: app/GoogleDrive.php:142
 msgid "Choose file(s) from your Google Drive"
 msgstr "Wähle Datei(en) von deinem Google Drive"
 
-#: app/GoogleDrive.php:217 app/GoogleDrive.php:224
+#: app/GoogleDrive.php:230 app/GoogleDrive.php:237 app/GoogleDrive.php:355
 msgid "API connection"
 msgstr "API Verbindung"
 
-#: app/GoogleDrive.php:218 app/GoogleDrive.php:1362 app/GoogleDrive.php:1407
+#: app/GoogleDrive.php:231 app/GoogleDrive.php:357 app/GoogleDrive.php:1639 app/GoogleDrive.php:1688
 msgid "Connect now"
 msgstr "Jetzt verbinden"
 
-#: app/GoogleDrive.php:225 app/GoogleDrive.php:1366
+#: app/GoogleDrive.php:238 app/GoogleDrive.php:367 app/GoogleDrive.php:1643
 msgid "Disconnect"
 msgstr "Trennen"
 
 #. translators: %1$s will be replaced by a date and time.
-#: app/GoogleDrive.php:230 app/GoogleDrive.php:1369
+#: app/GoogleDrive.php:243 app/GoogleDrive.php:1648
 #, php-format
 msgid "Created at %1$s"
 msgstr "Erstellt am %1$s"
 
-#. translators: %1$s will be replaced by a date and time.
-#: app/GoogleDrive.php:230 app/GoogleDrive.php:1369
+#: app/GoogleDrive.php:243 app/GoogleDrive.php:1650
 msgid "View and import files"
 msgstr "Zeige und importiere Dateien"
 
-#: app/GoogleDrive.php:244 app/GoogleDrive.php:1464
+#: app/GoogleDrive.php:257 app/GoogleDrive.php:1745
 msgid "Show shared files"
 msgstr "Zeige geteilte Dateien an"
 
-#: app/GoogleDrive.php:255 app/GoogleDrive.php:1469
+#: app/GoogleDrive.php:268 app/GoogleDrive.php:1750
 msgid "Show trashed files"
 msgstr "Zeige gelöschte Dateien an"
 
-#: app/GoogleDrive.php:267
+#: app/GoogleDrive.php:280
 msgid "Hint"
 msgstr "Hinweis"
 
 #. translators: %1$s will be replaced by a URL.
-#: app/GoogleDrive.php:269
+#: app/GoogleDrive.php:282
 #, php-format
-msgid ""
-"Each user will find its settings in his own <a href=\"%1$s\">user profile</"
-"a>."
-msgstr ""
-"Jeder Benutzer findet seine Einstellungen in seinem eigenem <a "
-"href=\"%1$s\">Benutzerprofil</a>."
+msgid "Each user will find its settings in his own <a href=\"%1$s\">user profile</a>."
+msgstr "Jeder Benutzer findet seine Einstellungen in seinem eigenem <a href=\"%1$s\">Benutzerprofil</a>."
 
-#: app/GoogleDrive.php:279
+#: app/GoogleDrive.php:287
+msgid "To fill in Client ID and Client Secret, follow these steps:"
+msgstr "So erhältst du Client-ID und Client-Secret:"
+
+#. translators: %1$s and %2$s will be replaced by a URL
+#: app/GoogleDrive.php:289
+#, php-format
+msgid "Go to this Google Cloud URL: %1$s"
+msgstr "Rufe diese Google-Cloud-URL auf: %1$s"
+
+#: app/GoogleDrive.php:290 app/GoogleDrive.php:291
+msgid "Select the project you want or create a new one."
+msgstr "Wähle das gewünschte Projekt aus oder lege ein neues an."
+
+#: app/GoogleDrive.php:292
+msgid "Under \"Library\" assign the Google Drive API to the project."
+msgstr "Weise dem Projekt unter „Bibliothek“ die Google Drive API zu."
+
+#: app/GoogleDrive.php:293
+msgid "Create a new set of \"OAuth 2.0 Client IDs.\" There, you will find the Client ID and Client Secret. Copy them."
+msgstr "Lege neue „OAuth 2.0-Client-IDs“ an. Dort findest du Client-ID und Client-Secret. Kopiere sie."
+
+#: app/GoogleDrive.php:294
+msgid "Also in this dialog, enter the following as the redirect URL:"
+msgstr "Trage in diesem Dialog außerdem Folgendes als Weiterleitungs-URL ein:"
+
+#: app/GoogleDrive.php:294 app/GoogleDrive.php:310
+msgid "Copied"
+msgstr "Kopiert"
+
+#: app/GoogleDrive.php:295
+msgid "Insert the copied Client ID and Client Secret in the fields here and save this form."
+msgstr "Füge die kopierte Client-ID und das Client-Secret hier in die Felder ein und speichere das Formular."
+
+#: app/GoogleDrive.php:296
+msgid "Click on the button below."
+msgstr "Klicke auf die Schaltfläche unten."
+
+#: app/GoogleDrive.php:298
+msgid "You need an SSL-certificate for your public domain to use this method. Local domains are not allowed by Google."
+msgstr "Für diese Methode benötigst du ein SSL-Zertifikat für deine öffentliche Domain. Lokale Domains lässt Google nicht zu."
+
+#: app/GoogleDrive.php:302 app/GoogleDrive.php:321 app/GoogleDrive.php:2021
+msgid "Client ID"
+msgstr "Client-ID"
+
+#: app/GoogleDrive.php:309
+msgid "Redirect URL"
+msgstr "Weiterleitungs-URL"
+
+#: app/GoogleDrive.php:310
+msgid "Enter the following as the redirect URL in the OAuth 2.0 client of your Google Cloud project:"
+msgstr "Trage Folgendes als Weiterleitungs-URL im OAuth 2.0-Client deines Google-Cloud-Projekts ein:"
+
+#: app/GoogleDrive.php:329 app/GoogleDrive.php:338 app/GoogleDrive.php:2027
+msgid "Client Secret"
+msgstr "Client-Secret"
+
+#: app/GoogleDrive.php:361
+msgid "Please save your Client ID and Client Secret first."
+msgstr "Bitte speichere zuerst deine Client-ID und dein Client-Secret."
+
+#: app/GoogleDrive.php:380
 msgid "Max. files to load per iteration"
 msgstr "Maximale Anzahl Dateien pro Durchlauf"
 
-#: app/GoogleDrive.php:280
-msgid ""
-"This value specifies how many files should be loaded during a directory "
-"import. The higher the value, the greater the likelihood of timeouts during "
-"import."
-msgstr ""
-"Dieser Wert gibt an, wie viele Dateien beim Importieren eines Verzeichnisses "
-"geladen werden sollen. Je höher der Wert, desto größer ist die "
-"Wahrscheinlichkeit, dass es während des Imports zu Zeitüberschreitungen "
-"kommt."
+#: app/GoogleDrive.php:381
+msgid "This value specifies how many files should be loaded during a directory import. The higher the value, the greater the likelihood of timeouts during import."
+msgstr "Dieser Wert gibt an, wie viele Dateien beim Importieren eines Verzeichnisses geladen werden sollen. Je höher der Wert, desto größer ist die Wahrscheinlichkeit, dass es während des Imports zu Zeitüberschreitungen kommt."
 
-#: app/GoogleDrive.php:385
+#: app/GoogleDrive.php:507
 msgid "New Google Drive access token saved for global usage."
 msgstr "Neuer Google Drive-Zugriffstoken für globale Nutzung gespeichert."
 
+#: app/GoogleDrive.php:516
+msgid "New Google Drive access token saved for direct input usage."
+msgstr "Neues Google-Drive-Zugriffstoken für die direkte Eingabe gespeichert."
+
 #. translators: %1$s will be replaced by the username.
-#: app/GoogleDrive.php:411
+#: app/GoogleDrive.php:542
 #, php-format
 msgid "New Google Drive access token saved for user %1$s."
 msgstr "Neuer Google Drive-Zugriffstoken für Benutzer %1$s gespeichert."
 
-#: app/GoogleDrive.php:492
+#: app/GoogleDrive.php:623
 msgid "Given GoogleDrive-URL could not be used as external file in websites."
-msgstr ""
-"Die angegebene GoogleDrive-URL konnte nicht als externe Datei in Websites "
-"verwendet werden."
+msgstr "Die angegebene GoogleDrive-URL konnte nicht als externe Datei in Websites verwendet werden."
 
-#: app/GoogleDrive.php:705
+#: app/GoogleDrive.php:887
+msgid "Missing state in Google OAuth response."
+msgstr "In der Google-OAuth-Antwort fehlt der Status (state)."
+
+#: app/GoogleDrive.php:893
+msgid "State from Google OAuth response does not match the required value."
+msgstr "Der Status (state) aus der Google-OAuth-Antwort entspricht nicht dem erwarteten Wert."
+
+#: app/GoogleDrive.php:916 app/GoogleDrive.php:951
 msgid "Got error from Google OAuth:"
 msgstr "Fehler von Google OAuth:"
 
-#: app/GoogleDrive.php:773
+#: app/GoogleDrive.php:1019 app/GoogleDrive/Protocol.php:311
 msgid "List of files could not be loaded from Google Drive. Error:"
-msgstr ""
-"Die Liste der Dateien konnte nicht aus Google Drive geladen werden. Fehler:"
+msgstr "Die Liste der Dateien konnte nicht aus Google Drive geladen werden. Fehler:"
 
 #. translators: %1$s will be replaced by a URL.
-#: app/GoogleDrive.php:778
+#: app/GoogleDrive.php:1024
 #, php-format
-msgid ""
-"List of files could not be loaded from Google Drive. Check the <a "
-"href=\"%1$s\" target=\"_blank\">log</a> for detailed information."
-msgstr ""
-"Die Dateiliste konnte nicht aus Google Drive geladen werden. Detaillierte "
-"Informationen finden Sie im <a href=\"%1$s\" target=\"_blank\">Protokoll</a>."
+msgid "List of files could not be loaded from Google Drive. Check the <a href=\"%1$s\" target=\"_blank\">log</a> for detailed information."
+msgstr "Die Dateiliste konnte nicht aus Google Drive geladen werden. Detaillierte Informationen finden Sie im <a href=\"%1$s\" target=\"_blank\">Protokoll</a>."
 
-#: app/GoogleDrive.php:881
+#: app/GoogleDrive.php:1127
 msgid "Loading folder data results in an error:"
 msgstr "Das Laden der Ordnerdaten führt zu einem Fehler:"
 
-#: app/GoogleDrive.php:931
+#: app/GoogleDrive.php:1177
 msgid "Import"
 msgstr "Importieren"
 
-#: app/GoogleDrive.php:933
+#: app/GoogleDrive.php:1179
 msgid "File-type is not supported"
 msgstr "Der Dateityp wird nicht unterstützt"
 
-#: app/GoogleDrive.php:951
+#: app/GoogleDrive.php:1208
 msgid "Go to Google Drive"
 msgstr "Gehe zu Google Drive"
 
-#: app/GoogleDrive.php:955
+#: app/GoogleDrive.php:1212
 msgid "Settings"
 msgstr "Einstellungen"
 
-#: app/GoogleDrive.php:959
+#: app/GoogleDrive.php:1216
 msgid "Import active directory"
 msgstr "Importiere aktuelles Verzeichnis"
 
-#: app/GoogleDrive.php:963
+#: app/GoogleDrive.php:1220
 msgid "Save active directory as your external source"
 msgstr "Speicher das aktuelle Verzeichnis als externe Quelle"
 
-#: app/GoogleDrive.php:1023
+#: app/GoogleDrive.php:1280
 msgid "Connect"
 msgstr "Verbinden"
 
-#: app/GoogleDrive.php:1146
+#: app/GoogleDrive.php:1423
 msgid "Error on request to get refreshed token."
 msgstr "Fehler beim Abrufen eines neuen Tokens."
 
-#: app/GoogleDrive.php:1197
+#: app/GoogleDrive.php:1474
 msgid "GoogleDrive is not connected!"
 msgstr "GoogleDrive ist nicht verbunden!"
 
 #. translators: %1$s will be replaced with a URL.
-#: app/GoogleDrive.php:1203
+#: app/GoogleDrive.php:1480
 msgid "GoogleDrive is not connected."
 msgstr "GoogleDrive ist nicht verbunden."
 
 #. translators: %1$s will be replaced with a URL.
-#: app/GoogleDrive.php:1206
+#: app/GoogleDrive.php:1483
 #, php-format
-msgid ""
-"GoogleDrive is not connected. Please create a connection to Google Drive <a "
-"href=\"%1$s\">here</a>."
-msgstr ""
-"GoogleDrive ist nicht verbunden. Bitte erstelle eine Verbindung zu Google "
-"Drive <a href=\"%1$s\">hier</a>."
+msgid "GoogleDrive is not connected. Please create a connection to Google Drive <a href=\"%1$s\">here</a>."
+msgstr "GoogleDrive ist nicht verbunden. Bitte erstelle eine Verbindung zu Google Drive <a href=\"%1$s\">hier</a>."
 
-#: app/GoogleDrive.php:1224
+#: app/GoogleDrive.php:1501
 msgid "GoogleDrive access token is not valid."
 msgstr "GoogleDrive Zugriffstoken ist nicht gültig."
 
-#: app/GoogleDrive.php:1229 app/GoogleDrive.php:1248
+#: app/GoogleDrive.php:1506 app/GoogleDrive.php:1525
 msgid "GoogleDrive access token appears to be no longer valid."
 msgstr "GoogleDrive Zugriffstoken scheint nicht länger gültig zu sein."
 
 #. translators: %1$s will be replaced with a URL.
-#: app/GoogleDrive.php:1232 app/GoogleDrive.php:1251
+#: app/GoogleDrive.php:1509 app/GoogleDrive.php:1528
 #, php-format
-msgid ""
-"GoogleDrive access token appears to be no longer valid. Please create a new "
-"connection to Google Drive <a href=\"%1$s\">here</a>."
-msgstr ""
-"Der GoogleDrive-Zugriffstoken scheint nicht mehr gültig zu sein. Bitte "
-"erstelle <a href=\"%1$s\">hier</a> eine neue Verbindung zu Google Drive."
+msgid "GoogleDrive access token appears to be no longer valid. Please create a new connection to Google Drive <a href=\"%1$s\">here</a>."
+msgstr "Der GoogleDrive-Zugriffstoken scheint nicht mehr gültig zu sein. Bitte erstelle <a href=\"%1$s\">hier</a> eine neue Verbindung zu Google Drive."
 
-#: app/GoogleDrive.php:1243
+#: app/GoogleDrive.php:1520
 msgid "Error during check of GoogleDrive access token:"
 msgstr "Fehler bei der Überprüfung des GoogleDrive-Zugriffstokens:"
 
-#: app/GoogleDrive.php:1352
+#: app/GoogleDrive.php:1629
 msgid "GoogleDrive"
 msgstr "GoogleDrive"
 
-#: app/GoogleDrive.php:1397
+#: app/GoogleDrive.php:1678
 msgid "Connect Google Drive"
 msgstr "Verbinde Google Drive"
 
-#: app/GoogleDrive.php:1399
-msgid ""
-"You will be directed to a Google dialog. Follow this and confirm the "
-"approvals."
-msgstr ""
-"Du wirst zu einem Google-Dialogfeld weitergeleitet. Folge den Anweisungen "
-"und bestätige die Genehmigungen."
+#: app/GoogleDrive.php:1680
+msgid "You will be directed to a Google dialog. Follow this and confirm the approvals."
+msgstr "Du wirst zu einem Google-Dialogfeld weitergeleitet. Folge den Anweisungen und bestätige die Genehmigungen."
 
-#: app/GoogleDrive.php:1400
-msgid ""
-"You will also be directed to the website of the plugin developer. This is "
-"necessary to allow you to easily share your Google Drive account. No data "
-"about you will be stored in this context."
-msgstr ""
-"Du wirst außerdem auf die Website des Plugin-Entwicklers weitergeleitet. "
-"Dies ist notwendig, damit du dein Google Drive-Konto einfach freigeben "
-"kannst. In diesem Zusammenhang werden keine Daten über dich gespeichert."
+#: app/GoogleDrive.php:1681
+msgid "You will also be directed to the website of the plugin developer. This is necessary to allow you to easily share your Google Drive account. No data about you will be stored in this context."
+msgstr "Du wirst außerdem auf die Website des Plugin-Entwicklers weitergeleitet. Dies ist notwendig, damit du dein Google Drive-Konto einfach freigeben kannst. In diesem Zusammenhang werden keine Daten über dich gespeichert."
 
-#: app/GoogleDrive.php:1401
-msgid ""
-"Click on the button below to connect your Google Drive with your website."
-msgstr ""
-"Klicke auf den Button unten, um dein Google Drive mit deiner Website zu "
-"verbinden."
+#: app/GoogleDrive.php:1682
+msgid "Click on the button below to connect your Google Drive with your website."
+msgstr "Klicke auf den Button unten, um dein Google Drive mit deiner Website zu verbinden."
 
-#: app/GoogleDrive.php:1412 app/GoogleDrive.php:1450
+#: app/GoogleDrive.php:1693 app/GoogleDrive.php:1731
 msgid "Cancel"
 msgstr "Abbrechen"
 
-#: app/GoogleDrive.php:1436
+#: app/GoogleDrive.php:1717
 msgid "Disconnect Google Drive"
 msgstr "Trenne Google Drive"
 
-#: app/GoogleDrive.php:1438
-msgid ""
-"Click on the button below to disconnect your Google Drive from your website."
-msgstr ""
-"Klicke auf den Button unten, um die Verbindung zwischen Google Drive und "
-"deiner Website zu trennen."
+#: app/GoogleDrive.php:1719
+msgid "Click on the button below to disconnect your Google Drive from your website."
+msgstr "Klicke auf den Button unten, um die Verbindung zwischen Google Drive und deiner Website zu trennen."
 
-#: app/GoogleDrive.php:1439
-msgid ""
-"Files you downloaded in the media library will still be there and usable."
-msgstr ""
-"Die Dateien, die du in die Mediathek heruntergeladen hast, bleiben dort "
-"gespeichert und können weiterhin verwendet werden."
+#: app/GoogleDrive.php:1720
+msgid "Files you downloaded in the media library will still be there and usable."
+msgstr "Die Dateien, die du in die Mediathek heruntergeladen hast, bleiben dort gespeichert und können weiterhin verwendet werden."
 
-#: app/GoogleDrive.php:1445
+#: app/GoogleDrive.php:1726
 msgid "Disconnect now"
 msgstr "Jetzt trennen"
 
-#: app/GoogleDrive.php:1506
+#: app/GoogleDrive.php:1787
 msgid "Error during loading of file permissions from Google Drive. Error:"
 msgstr "Fehler beim Abrufen von Dateidaten aus Google Drive:"
 
-#: app/GoogleDrive.php:1547
+#: app/GoogleDrive.php:1828
 msgid "Access Token"
 msgstr "Zugriffstoken"
 
-#: app/GoogleDrive.php:1548 app/GoogleDrive.php:1592
+#: app/GoogleDrive.php:1829 app/GoogleDrive.php:1873
 msgid "Enter your access token"
 msgstr "Zugriffstoken eingeben"
 
-#: app/GoogleDrive.php:1555
+#: app/GoogleDrive.php:1836
 msgid "Folder ID"
 msgstr "Verzeichnis ID"
 
-#: app/GoogleDrive.php:1556
+#: app/GoogleDrive.php:1837
 msgid "You can find the folder ID in the URL when you show it in your browser."
-msgstr ""
-"Die Ordner-ID findest du in der URL, wenn du das Verzeichnis in deinem "
-"Browser anzeigst."
+msgstr "Die Ordner-ID findest du in der URL, wenn du das Verzeichnis in deinem Browser anzeigst."
 
-#: app/GoogleDrive.php:1557
+#: app/GoogleDrive.php:1838
 msgid "Enter a folder ID"
 msgstr "Gibt eine Verzeichnis ID an"
 
-#: app/GoogleDrive.php:1588
+#: app/GoogleDrive.php:1869
 msgid "Connect to your Google Drive"
 msgstr "Verbinde dein Google Drive"
 
-#: app/GoogleDrive.php:1609
-msgid ""
-"An access token has already been set by an administrator in the plugin "
-"settings. Just connect for show the files."
-msgstr ""
-"Ein Zugriffstoken wurde bereits von einem Administrator in den Plugin-"
-"Einstellungen festgelegt. Stelle einfach eine Verbindung her, um die Dateien "
-"anzuzeigen."
-
 #. translators: %1$s will be replaced by a URL.
-#: app/GoogleDrive.php:1613
+#: app/GoogleDrive.php:1889
 #, php-format
-msgid ""
-"Your access token is already set <a href=\"%1$s\">here</a>. Just connect for "
-"show the files."
-msgstr ""
-"Dein Zugriffstoken ist bereits <a href=\"%1$s\">hier</a> eingerichtet. "
-"Stelle einfach eine Verbindung her, um die Dateien anzuzeigen."
+msgid "Set your credentials <a href=\"%1$s\">here</a>."
+msgstr "Hinterlege deine Zugangsdaten <a href=\"%1$s\">hier</a>."
+
+#: app/GoogleDrive.php:1892 app/GoogleDrive.php:1903
+msgid "An access token has already been set by an administrator in the plugin settings. Just connect for show the files."
+msgstr "Ein Zugriffstoken wurde bereits von einem Administrator in den Plugin-Einstellungen festgelegt. Stelle einfach eine Verbindung her, um die Dateien anzuzeigen."
 
 #. translators: %1$s will be replaced by a URL.
-#: app/GoogleDrive.php:1619
+#: app/GoogleDrive.php:1895
 #, php-format
-msgid ""
-"Your access token is already set <a href=\"%1$s\">in your profile</a>. Just "
-"connect for show the files."
-msgstr ""
-"Dein Zugriffstoken ist bereits <a href=\"%1$s\">in deinem Profil</a> "
-"festgelegt. Stelle einfach eine Verbindung her, um die Dateien anzuzeigen."
+msgid "Your credentials are already set <a href=\"%1$s\">here</a>. Just connect for show the files."
+msgstr "Deine Zugangsdaten sind bereits <a href=\"%1$s\">hier</a> hinterlegt. Verbinde dich einfach, um die Dateien anzuzeigen."
 
 #. translators: %1$s will be replaced by a URL.
-#: app/GoogleDrive.php:1633
+#: app/GoogleDrive.php:1907
+#, php-format
+msgid "Your access token is already set <a href=\"%1$s\">here</a>. Just connect for show the files."
+msgstr "Dein Zugriffstoken ist bereits <a href=\"%1$s\">hier</a> eingerichtet. Stelle einfach eine Verbindung her, um die Dateien anzuzeigen."
+
+#. translators: %1$s will be replaced by a URL.
+#: app/GoogleDrive.php:1913
+#, php-format
+msgid "Your access token is already set <a href=\"%1$s\">in your profile</a>. Just connect for show the files."
+msgstr "Dein Zugriffstoken ist bereits <a href=\"%1$s\">in deinem Profil</a> festgelegt. Stelle einfach eine Verbindung her, um die Dateien anzuzeigen."
+
+#. translators: %1$s will be replaced by a URL.
+#: app/GoogleDrive.php:1927
 #, php-format
 msgid "Get your access token <a href=\"%1$s\">here</a>."
 msgstr "Hole deinen Zugriffstoken <a href=\"%1$s\">hier</a>."
+
+#: app/GoogleDrive.php:1954
+msgid "Direct input of API credentials"
+msgstr "Direkte Eingabe der API-Zugangsdaten"
+
+#: app/GoogleDrive/Cli.php:39
+msgid "No access tokens found for any user!"
+msgstr "Für keinen Benutzer wurden Zugriffstokens gefunden!"
+
+#: app/GoogleDrive/Cli.php:44
+msgid "Wrong format for access tokens!"
+msgstr "Falsches Format der Zugriffstokens!"
+
+#. translators: %1$s will be replaced by the User ID.
+#: app/GoogleDrive/Cli.php:58 app/GoogleDrive/Cli.php:140
+#, php-format
+msgid "User with ID %1$d could not be found!"
+msgstr "Der Benutzer mit der ID %1$d wurde nicht gefunden!"
+
+#. translators: %1$s will be replaced by the username.
+#: app/GoogleDrive/Cli.php:87
+#, php-format
+msgid "List of files could not be loaded from Google Drive for user %1$s. Error:"
+msgstr "Die Dateiliste konnte für den Benutzer %1$s nicht aus Google Drive geladen werden. Fehler:"
+
+#. translators: %1$s will be replaced by the username.
+#: app/GoogleDrive/Cli.php:99
+#, php-format
+msgid "No files found for user %1$s!"
+msgstr "Für den Benutzer %1$s wurden keine Dateien gefunden!"
+
+#. translators: %1$d will be replaced by a number.
+#: app/GoogleDrive/Cli.php:104
+#, php-format
+msgid "%1$d files found for user %2$s."
+msgstr "%1$d Dateien für den Benutzer %2$s gefunden."
+
+#: app/GoogleDrive/Cli.php:126
+msgid "No access token found for any user!"
+msgstr "Für keinen Benutzer wurde ein Zugriffstoken gefunden!"
+
+#. translators: %1$s will be replaced by the username.
+#: app/GoogleDrive/Cli.php:151
+#, php-format
+msgid "Token has been refreshed for user %1$s."
+msgstr "Das Token für den Benutzer %1$s wurde erneuert."
+
+#. translators: %1$s will be replaced by the username.
+#: app/GoogleDrive/Cli.php:155
+#, php-format
+msgid "Token has not been refreshed for user %1$s."
+msgstr "Das Token für den Benutzer %1$s wurde nicht erneuert."
+
+#: app/GoogleDrive/Client.php:97
+msgid "Google OAuth token expired. Requesting a new one now."
+msgstr "Das Google-OAuth-Token ist abgelaufen. Ein neues wird jetzt angefordert."
+
+#: app/GoogleDrive/Client.php:114
+msgid "Got empty response for requested new Google OAuth token!"
+msgstr "Leere Antwort auf die Anforderung eines neuen Google-OAuth-Tokens erhalten!"
+
+#: app/GoogleDrive/Client.php:129
+msgid "Got error from Google for requested new OAuth token:"
+msgstr "Google hat bei der Anforderung eines neuen OAuth-Tokens einen Fehler gemeldet:"
+
+#: app/GoogleDrive/Export.php:87
+msgid "Could not load file path for given attachment ID."
+msgstr "Der Dateipfad für die angegebene Anhang-ID konnte nicht geladen werden."
+
+#: app/GoogleDrive/Export.php:123
+msgid "Folder for the file could not be created in Google Drive. Error:"
+msgstr "Der Ordner für die Datei konnte in Google Drive nicht angelegt werden. Fehler:"
+
+#: app/GoogleDrive/Export.php:176
+msgid "File could not be uploaded to Google Drive. HTTP result code was:"
+msgstr "Die Datei konnte nicht zu Google Drive hochgeladen werden. HTTP-Statuscode war:"
+
+#: app/GoogleDrive/Export.php:202
+msgid "File could not be uploaded to Google Drive. Error:"
+msgstr "Die Datei konnte nicht zu Google Drive hochgeladen werden. Fehler:"
+
+#: app/GoogleDrive/Export.php:253
+msgid "File could not be delete from Google Drive. Error:"
+msgstr "Die Datei konnte nicht aus Google Drive gelöscht werden. Fehler:"
+
+#: app/GoogleDrive/Protocol.php:101 app/GoogleDrive/Protocol.php:277
+msgid "Access token missing to connect to Google Drive!"
+msgstr "Für die Verbindung zu Google Drive fehlt das Zugriffstoken!"
+
+#: app/GoogleDrive/Protocol.php:118
+msgid "Specified URL does not contain a file ID from Google Drive!"
+msgstr "Die angegebene URL enthält keine Datei-ID von Google Drive!"
+
+#: app/GoogleDrive/Protocol.php:126 app/GoogleDrive/Protocol.php:347
+msgid "Specified URL already exist in your media library."
+msgstr "Die angegebene URL existiert bereits in deiner Mediathek."
+
+#: app/GoogleDrive/Protocol.php:139 app/GoogleDrive/Protocol.php:290 app/GoogleDrive/Protocol.php:457
+msgid "Google Drive client could not be initiated!"
+msgstr "Der Google-Drive-Client konnte nicht gestartet werden!"
+
+#: app/GoogleDrive/Protocol.php:236
+msgid "Google Drive client could not download the requested file! Error:"
+msgstr "Der Google-Drive-Client konnte die angeforderte Datei nicht herunterladen! Fehler:"
+
+#: app/GoogleDrive/Protocol.php:357
+msgid "Google Drive client could not download a requested file during mass-import! Error:"
+msgstr "Der Google-Drive-Client konnte beim Massenimport eine angeforderte Datei nicht herunterladen! Fehler:"
+
+#: app/GoogleDrive/Protocol.php:357
+msgid "Requested file:"
+msgstr "Angeforderte Datei:"
+
+#. translators: %1$s will be replaced by a URL.
+#: app/GoogleDrive/Protocol.php:383 app/GoogleDrive/Protocol.php:556
+#, php-format
+msgid "Error occurred during requesting this file. Check the <a href=\"%1$s\" target=\"_blank\">log</a> for detailed information."
+msgstr "Beim Abrufen dieser Datei ist ein Fehler aufgetreten. Details findest du im <a href=\"%1$s\" target=\"_blank\">Protokoll</a>."
+
+#: app/GoogleDrive/Protocol.php:391 app/GoogleDrive/Protocol.php:564
+msgid "The following error occurred:"
+msgstr "Folgender Fehler ist aufgetreten:"
+
+#: app/GoogleDrive/Protocol.php:487
+msgid "Private file could not be loaded from Google Drive:"
+msgstr "Die private Datei konnte nicht aus Google Drive geladen werden:"
+
+#. translators: %1$s will be replaced by the URL which is imported.
+#: app/GoogleDrive/Protocol.php:530
+#, php-format
+msgid "Get URL %1$s from Google Drive"
+msgstr "Lade die URL %1$s aus Google Drive"
+
+#: app/Plugin/Configuration.php:40
+msgid "Use only Google Drive"
+msgstr "Verwende ausschließlich Google Drive"
+
+#: app/Plugin/Configuration.php:50
+msgid "After that, you will only be able to see and use Google Drive for external sources."
+msgstr "Danach kannst du nur noch Google Drive für externe Quellen anzeigen und nutzen."
+
+#: app/Plugin/Configuration.php:50
+msgid "This will disable all other services except Google Drive."
+msgstr "Dadurch werden alle anderen Dienste mit Ausnahme von Google Drive deaktiviert."

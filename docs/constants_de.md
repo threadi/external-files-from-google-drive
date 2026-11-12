@@ -2,7 +2,7 @@
 
 Die Zugangsdaten für Google Drive lassen sich als Konstanten festlegen, z. B. in der `wp-config.php`. So landen sie nicht in der Datenbank und nicht in Datenbank-Backups, und jede Umgebung kann eigene Werte haben.
 
-Erfordert _External Files in Media Library_ 5.7.0 oder neuer. Siehe auch die [Dokumentation des Hauptplugins](https://github.com/threadi/external-files-in-media-library/blob/master/docs/constants_de.md).
+Erfordert _External Files in Media Library_ 6.0.0 oder neuer. Siehe auch die [Dokumentation des Hauptplugins](https://github.com/threadi/external-files-in-media-library/blob/master/docs/constants_de.md).
 
 ## So funktioniert es
 

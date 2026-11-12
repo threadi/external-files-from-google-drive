@@ -12,9 +12,11 @@ defined( 'ABSPATH' ) || exit;
 
 use Error;
 use ExternalFilesFromGoogleDrive\GoogleDrive;
+use ExternalFilesInMediaLibrary\ExternalFiles\File;
 use ExternalFilesInMediaLibrary\ExternalFiles\Files;
 use ExternalFilesInMediaLibrary\ExternalFiles\Import;
 use ExternalFilesInMediaLibrary\ExternalFiles\Protocol_Base;
+use ExternalFilesInMediaLibrary\ExternalFiles\Protocols\Http;
 use ExternalFilesInMediaLibrary\ExternalFiles\Results;
 use ExternalFilesInMediaLibrary\ExternalFiles\Results\Url_Result;
 use ExternalFilesInMediaLibrary\Plugin\Helper;
@@ -23,6 +25,7 @@ use ExternalFilesFromGoogleDrive\Dependencies\Google\Service\Drive;
 use ExternalFilesFromGoogleDrive\Dependencies\Google\Service\Drive\DriveFile;
 use ExternalFilesFromGoogleDrive\Dependencies\Google\Service\Exception;
 use JsonException;
+use WP_Filesystem_Base;
 
 /**
  * Object to handle different protocols.
@@ -404,6 +407,94 @@ class Protocol extends Protocol_Base {
 
 		// return resulting list of files.
 		return $list;
+	}
+
+	/**
+	 * Return temp file from given URL.
+	 *
+	 * Private files are loaded via the API, other files (e.g. exported public files) via HTTP.
+	 *
+	 * @param string             $url The given URL.
+	 * @param WP_Filesystem_Base $filesystem The file system handler.
+	 *
+	 * @return bool|string
+	 */
+	public function get_temp_file( string $url, WP_Filesystem_Base $filesystem ): bool|string {
+		// bail if URL is empty.
+		if ( empty( $url ) ) {
+			return false;
+		}
+
+		// get the external file for this URL.
+		$external_file_obj = Files::get_instance()->get_file_by_url( $url );
+
+		// use the HTTP handler for files, which are not private.
+		if ( ! $external_file_obj instanceof File || ! method_exists( $external_file_obj, 'is_private' ) || ! $external_file_obj->is_private() ) { // @phpstan-ignore function.alreadyNarrowedType
+			$http_protocol_handler = new Http( $url );
+			$http_protocol_handler->set_fields( $this->get_fields() );
+			return $http_protocol_handler->get_temp_file( $url, $filesystem );
+		}
+
+		// get the file ID saved during the export.
+		$file_id = get_post_meta( $external_file_obj->get_id(), 'efml_google_drive_file_id', true );
+
+		// otherwise get the file ID from the URL.
+		if ( ! is_string( $file_id ) || '' === $file_id ) {
+			$file_id = str_replace( GoogleDrive::get_instance()->get_url_mark(), '', $url );
+		}
+
+		// get the Google Drive object.
+		$google_drive_obj = GoogleDrive::get_instance();
+		$google_drive_obj->set_fields( $this->get_fields() );
+
+		// get the client with the access token.
+		$client_obj = new Client( $google_drive_obj->get_access_token() );
+		$client     = $client_obj->get_client();
+
+		// bail if client is not a Client object.
+		if ( ! $client instanceof \ExternalFilesFromGoogleDrive\Dependencies\Google\Client ) {
+			// log event.
+			Log::get_instance()->create( __( 'Google Drive client could not be initiated!', 'external-files-from-google-drive' ), esc_url( $url ), 'error' );
+
+			// do nothing more.
+			return false;
+		}
+
+		// get the tmp file name.
+		$tmp_file = wp_tempnam();
+
+		// load the file and save it in parts, so it is not loaded completely into memory.
+		try {
+			$service  = new Drive( $client );
+			$response = $service->files->get( $file_id, array( 'alt' => 'media' ) );
+			$body     = $response->getBody(); // @phpstan-ignore method.notFound
+			$handle   = fopen( $tmp_file, 'wb' ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fopen
+
+			// bail if tmp file could not be opened.
+			if ( ! $handle ) {
+				return false;
+			}
+
+			// save the file in parts.
+			while ( ! $body->eof() ) {
+				fwrite( $handle, $body->read( 1024 * 1024 ) ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fwrite
+			}
+
+			// close the file.
+			fclose( $handle ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose
+		} catch ( \Exception | Error $e ) {
+			// log this event.
+			Log::get_instance()->create( __( 'Private file could not be loaded from Google Drive:', 'external-files-from-google-drive' ) . ' <code>' . esc_html( $e->getMessage() ) . '</code>', esc_url( $url ), 'error' );
+
+			// delete the tmp file.
+			wp_delete_file( $tmp_file );
+
+			// return false as we do not get the file.
+			return false;
+		}
+
+		// return the path to the tmp file.
+		return $tmp_file;
 	}
 
 	/**

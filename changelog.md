@@ -4,13 +4,20 @@
 
 ### Added
 
-- Added possibility to define the API credentials for the direct input via constants, e.g. in wp-config.php (requires External Files in Media Library 5.7.0)
+- Added possibility to define the API credentials for the direct input via constants, e.g. in wp-config.php (requires External Files in Media Library 6.0.0)
 - Added documentation for the constants in docs/constants.md
-- Added support for the folder structure of exported files, missing folders are created (requires External Files in Media Library 5.7.0)
+- Added support for the folder structure of exported files, missing folders are created (requires External Files in Media Library 6.0.0)
+- Added support for private files, if the access token is saved for the complete website (requires External Files in Media Library 6.0.0): files are delivered via the cache of the proxy, which loads them via the API
+- Added link to Google Drive in the info box of each file (requires External Files in Media Library 6.0.0)
+
+### Changed
+
+- Updated German translations, incl. the texts of earlier versions which were not translated yet
 
 ### Fixed
 
 - Fixed export of files into the main directory of Google Drive
+- Fixed missing delivery of exported files via the proxy, as the files could not be loaded for its cache
 
 ## [1.3.0] - 24.10.2026
 

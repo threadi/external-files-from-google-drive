@@ -190,6 +190,11 @@ class Export extends Export_Base {
 			// save the used file ID.
 			update_post_meta( $attachment_id, 'efml_google_drive_file_id', $file_id );
 
+			// return the internal URL for this file, if it should be saved privately.
+			if ( ! empty( $credentials['private'] ) ) {
+				return $google_drive_object->get_url_mark() . $file_id;
+			}
+
 			// return the public URL for this file.
 			return $google_drive_object->get_public_url_for_file_id( $file_id );
 		} catch ( Exception $e ) {
@@ -348,5 +353,19 @@ class Export extends Export_Base {
 
 		// return the ID of the last folder.
 		return $parent_id;
+	}
+
+	/**
+	 * Return whether this service could save exported files privately.
+	 *
+	 * Private files are delivered via the proxy of External Files in Media Library from its cache. This requires
+	 * the access token to be saved globally, as the files are loaded without a logged-in user.
+	 *
+	 * @since 1.4.0 Available since 1.4.0.
+	 *
+	 * @return bool
+	 */
+	public function supports_private_files(): bool {
+		return GoogleDrive::get_instance()->is_access_token_global();
 	}
 }

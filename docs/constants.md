@@ -2,7 +2,7 @@
 
 You can define the credentials of Google Drive as constants, e.g. in your `wp-config.php`. This keeps them out of the database and out of database backups, and allows different values per environment.
 
-Requires _External Files in Media Library_ 5.7.0 or newer. See also the [documentation of the main plugin](https://github.com/threadi/external-files-in-media-library/blob/master/docs/constants.md).
+Requires _External Files in Media Library_ 6.0.0 or newer. See also the [documentation of the main plugin](https://github.com/threadi/external-files-in-media-library/blob/master/docs/constants.md).
 
 ## How it works
 

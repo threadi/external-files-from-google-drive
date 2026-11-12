@@ -319,4 +319,35 @@ class Protocol extends externalFilesFromGoogleDriveTests {
 
 		$this->assertEquals( array(), $this->get_protocol( $this->mark . 'eflm-import-all' )->get_url_infos() );
 	}
+
+	/**
+	 * Test the temporary file of a private file, which is loaded via the API.
+	 *
+	 * @return void
+	 */
+	public function test_get_temp_file_of_private_file(): void {
+		$this->connect();
+		$url           = 'https://drive.google.com/drive/file123';
+		$attachment_id = $this->create_local_attachment();
+		update_post_meta( $attachment_id, EFML_POST_META_URL, $url );
+		update_post_meta( $attachment_id, 'efml_private_file', 1 );
+		update_post_meta( $attachment_id, 'efml_google_drive_file_id', 'file123' );
+		$this->add_google_file( 'file123', 'example.jpg', 'my private content' );
+
+		// get the temporary file.
+		$protocol = new \ExternalFilesFromGoogleDrive\GoogleDrive\Protocol( $url );
+		$tmp_file = $protocol->get_temp_file( $url, \ExternalFilesInMediaLibrary\Plugin\Helper::get_wp_filesystem() );
+		$this->assertIsString( $tmp_file );
+		$this->assertEquals( 'my private content', file_get_contents( $tmp_file ) ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+		wp_delete_file( $tmp_file );
+	}
+
+	/**
+	 * Test the URL of the platform.
+	 *
+	 * @return void
+	 */
+	public function test_get_platform_url(): void {
+		$this->assertEquals( 'https://drive.google.com/drive/my-drive', \ExternalFilesFromGoogleDrive\GoogleDrive::get_instance()->get_platform_url() );
+	}
 }

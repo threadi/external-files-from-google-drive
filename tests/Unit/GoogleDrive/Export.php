@@ -329,4 +329,33 @@ class Export extends externalFilesFromGoogleDriveTests {
 		$this->assertNotEmpty( $this->get_log_entries( $target ) );
 		$this->assertEmpty( get_post_meta( $attachment_id, 'efml_google_drive_file_id', true ) );
 	}
+
+	/**
+	 * Test the support of private files, which requires a global access token.
+	 *
+	 * @return void
+	 */
+	public function test_supports_private_files(): void {
+		$this->set_mode( 'global' );
+		$this->assertTrue( $this->get_export()->supports_private_files() );
+		$this->set_mode( 'user' );
+		$this->assertFalse( $this->get_export()->supports_private_files() );
+	}
+
+	/**
+	 * Test the export of a private file.
+	 *
+	 * @return void
+	 */
+	public function test_export_private_file(): void {
+		$this->connect();
+		$attachment_id = $this->create_local_attachment();
+		$this->add_upload_responses();
+
+		$url = $this->get_export()->export_file( $attachment_id, 'https://drive.google.com/drive/', array( 'private' => true ) );
+
+		// the internal URL is used.
+		$this->assertEquals( 'https://drive.google.com/drive/new123', $url );
+		$this->assertEquals( 'new123', get_post_meta( $attachment_id, 'efml_google_drive_file_id', true ) );
+	}
 }
