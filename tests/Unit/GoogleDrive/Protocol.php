@@ -350,4 +350,36 @@ class Protocol extends externalFilesFromGoogleDriveTests {
 	public function test_get_platform_url(): void {
 		$this->assertEquals( 'https://drive.google.com/drive/my-drive', \ExternalFilesFromGoogleDrive\GoogleDrive::get_instance()->get_platform_url() );
 	}
+
+	/**
+	 * Test that the content of a file is saved completely, also if it is larger than the parts it is written in.
+	 *
+	 * @return void
+	 */
+	public function test_save_response_to_file(): void {
+		$content  = random_bytes( 3 * 1024 * 1024 + 123 );
+		$response = new \ExternalFilesFromGoogleDrive\Dependencies\GuzzleHttp\Psr7\Response( 200, array(), $content );
+		$file     = wp_tempnam();
+
+		$this->call_method( $this->get_protocol( 'https://drive.google.com/file/d/file1' ), 'save_response_to_file', array( $response, $file ) );
+
+		$this->assertSame( md5( $content ), md5_file( $file ) );
+		wp_delete_file( $file );
+	}
+
+	/**
+	 * Test that a response without content results in an error.
+	 *
+	 * @return void
+	 */
+	public function test_save_response_to_file_without_response(): void {
+		$file = wp_tempnam();
+
+		try {
+			$this->expectException( \Error::class );
+			$this->call_method( $this->get_protocol( 'https://drive.google.com/file/d/file1' ), 'save_response_to_file', array( null, $file ) );
+		} finally {
+			wp_delete_file( $file );
+		}
+	}
 }

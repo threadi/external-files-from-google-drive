@@ -900,4 +900,62 @@ class GoogleDrive extends externalFilesFromGoogleDriveTests {
 	public function test_get_export_object(): void {
 		$this->assertSame( \ExternalFilesFromGoogleDrive\GoogleDrive\Export::get_instance(), $this->get_google_drive()->get_export_object() );
 	}
+
+	/**
+	 * Test the directory listing with more files than Google Drive returns with one request.
+	 *
+	 * @return void
+	 */
+	public function test_get_directory_listing_with_multiple_parts(): void {
+		$this->connect();
+		$file = static function ( string $id, string $name ): array {
+			return array(
+				'id'          => $id,
+				'name'        => $name,
+				'mimeType'    => 'application/pdf',
+				'size'        => '1024',
+				'createdTime' => '2024-01-02T03:04:05.000Z',
+			);
+		};
+
+		// the second part is requested with the token of the first part.
+		$this->add_google_response( 'GET', 'files', 200, array( 'files' => array( $file( 'file3', 'third.pdf' ) ) ), array( 'pageToken' => 'part-3' ) );
+		$this->add_google_response( 'GET', 'files', 200, array( 'files' => array( $file( 'file2', 'second.pdf' ) ), 'nextPageToken' => 'part-3' ), array( 'pageToken' => 'part-2' ) );
+		$this->add_google_response( 'GET', 'files', 200, array( 'files' => array( $file( 'file1', 'first.pdf' ) ), 'nextPageToken' => 'part-2' ) );
+
+		$listing = $this->get_google_drive()->get_directory_listing( 'Google Drive Directory Listing' );
+
+		$this->assertEquals( array( 'first.pdf', 'second.pdf', 'third.pdf' ), array_column( $listing['Google Drive Directory Listing']['files'], 'title' ) );
+		$this->assertCount( 3, $this->get_google_requests() );
+	}
+
+	/**
+	 * Test that the list of files stops, if Google Drive returns the same token again.
+	 *
+	 * @return void
+	 */
+	public function test_get_all_files_with_repeated_token(): void {
+		$this->connect();
+		$this->add_google_response(
+			'GET',
+			'files',
+			200,
+			array(
+				'files'         => array(
+					array(
+						'id'   => 'file1',
+						'name' => 'first.pdf',
+					),
+				),
+				'nextPageToken' => 'same-token',
+			)
+		);
+		$client  = ( new \ExternalFilesFromGoogleDrive\GoogleDrive\Client( $this->get_google_drive()->get_access_token() ) )->get_client();
+		$service = new \ExternalFilesFromGoogleDrive\Dependencies\Google\Service\Drive( $client );
+
+		$files = $this->get_google_drive()->get_all_files( $service, array( 'pageSize' => 1000 ) );
+
+		$this->assertCount( 2, $files );
+		$this->assertCount( 2, $this->get_google_requests() );
+	}
 }

@@ -18,6 +18,8 @@
 
 - Fixed export of files into the main directory of Google Drive
 - Fixed missing delivery of exported files via the proxy, as the files could not be loaded for its cache
+- Fixed directory listing and import of more than 1000 files, only the first 1000 files have been used
+- Fixed high memory usage during the import of large files, they are now saved in parts into a local file
 
 ## [1.3.0] - 24.10.2026
 

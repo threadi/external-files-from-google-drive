@@ -963,6 +963,53 @@ class GoogleDrive extends Service_Base implements Service {
 	}
 
 	/**
+	 * Return all files for the given query, also if Google Drive returns them in multiple parts.
+	 *
+	 * Google Drive returns at most 1000 files per request (the value of "pageSize"). The following parts are
+	 * loaded with the token of the previous part until the list is complete.
+	 *
+	 * @since 1.4.0 Available since 1.4.0.
+	 *
+	 * @param Drive               $service The Google Drive service.
+	 * @param array<string,mixed> $query   The query for the list of files.
+	 *
+	 * @return array<int,DriveFile>
+	 * @throws Exception If a request fails.
+	 */
+	public function get_all_files( Drive $service, array $query ): array {
+		// collect the files.
+		$files = array();
+
+		// collect the used tokens to prevent endless loops with faulty responses.
+		$used_tokens = array();
+
+		do {
+			// load the actual part.
+			$results = $service->files->listFiles( $query );
+
+			// add its files to the list.
+			foreach ( $results->getFiles() as $file_obj ) {
+				$files[] = $file_obj;
+			}
+
+			// get the token for the next part.
+			$token = (string) $results->getNextPageToken();
+
+			// bail if this token has been used already.
+			if ( isset( $used_tokens[ $token ] ) ) {
+				break;
+			}
+			$used_tokens[ $token ] = true;
+
+			// use the token for the next part.
+			$query['pageToken'] = $token;
+		} while ( '' !== $token );
+
+		// return the complete list.
+		return $files;
+	}
+
+	/**
 	 * Enable WP CLI for Google Drive tasks.
 	 *
 	 * @return void
@@ -1011,9 +1058,9 @@ class GoogleDrive extends Service_Base implements Service {
 		 */
 		$query = apply_filters( 'efmlgd_google_drive_query_params', $query, $directory );
 
-		// get the files.
+		// get the files (all parts of the list).
 		try {
-			$results = $service->files->listFiles( $query );
+			$files = $this->get_all_files( $service, $query );
 		} catch ( Exception $e ) {
 			// log event.
 			Log::get_instance()->create( __( 'List of files could not be loaded from Google Drive. Error:', 'external-files-from-google-drive' ) . ' <code>' . wp_json_encode( $e->getErrors() ) . '</code>', '', 'error' );
@@ -1031,13 +1078,6 @@ class GoogleDrive extends Service_Base implements Service {
 			// return an empty list as we could not analyse the file.
 			return array();
 		}
-
-		/**
-		 * Get the list of files from Google Drive.
-		 *
-		 * This will be all files depending on the query.
-		 */
-		$files = $results->getFiles();
 
 		// bail if list is empty.
 		if ( empty( $files ) ) {

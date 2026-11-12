@@ -42,29 +42,29 @@ msgstr ""
 msgid "API connection"
 msgstr ""
 
-#: app/GoogleDrive.php:231 app/GoogleDrive.php:357 app/GoogleDrive.php:1639 app/GoogleDrive.php:1688
+#: app/GoogleDrive.php:231 app/GoogleDrive.php:357 app/GoogleDrive.php:1679 app/GoogleDrive.php:1728
 msgid "Connect now"
 msgstr ""
 
-#: app/GoogleDrive.php:238 app/GoogleDrive.php:367 app/GoogleDrive.php:1643
+#: app/GoogleDrive.php:238 app/GoogleDrive.php:367 app/GoogleDrive.php:1683
 msgid "Disconnect"
 msgstr ""
 
 #. translators: %1$s will be replaced by a date and time.
-#: app/GoogleDrive.php:243 app/GoogleDrive.php:1648
+#: app/GoogleDrive.php:243 app/GoogleDrive.php:1688
 #, php-format
 msgid "Created at %1$s"
 msgstr ""
 
-#: app/GoogleDrive.php:243 app/GoogleDrive.php:1650
+#: app/GoogleDrive.php:243 app/GoogleDrive.php:1690
 msgid "View and import files"
 msgstr ""
 
-#: app/GoogleDrive.php:257 app/GoogleDrive.php:1745
+#: app/GoogleDrive.php:257 app/GoogleDrive.php:1785
 msgid "Show shared files"
 msgstr ""
 
-#: app/GoogleDrive.php:268 app/GoogleDrive.php:1750
+#: app/GoogleDrive.php:268 app/GoogleDrive.php:1790
 msgid "Show trashed files"
 msgstr ""
 
@@ -120,7 +120,7 @@ msgstr ""
 msgid "You need an SSL-certificate for your public domain to use this method. Local domains are not allowed by Google."
 msgstr ""
 
-#: app/GoogleDrive.php:302 app/GoogleDrive.php:321 app/GoogleDrive.php:2021
+#: app/GoogleDrive.php:302 app/GoogleDrive.php:321 app/GoogleDrive.php:2061
 msgid "Client ID"
 msgstr ""
 
@@ -132,7 +132,7 @@ msgstr ""
 msgid "Enter the following as the redirect URL in the OAuth 2.0 client of your Google Cloud project:"
 msgstr ""
 
-#: app/GoogleDrive.php:329 app/GoogleDrive.php:338 app/GoogleDrive.php:2027
+#: app/GoogleDrive.php:329 app/GoogleDrive.php:338 app/GoogleDrive.php:2067
 msgid "Client Secret"
 msgstr ""
 
@@ -178,188 +178,188 @@ msgstr ""
 msgid "Got error from Google OAuth:"
 msgstr ""
 
-#: app/GoogleDrive.php:1019 app/GoogleDrive/Protocol.php:311
+#: app/GoogleDrive.php:1066 app/GoogleDrive/Protocol.php:310
 msgid "List of files could not be loaded from Google Drive. Error:"
 msgstr ""
 
 #. translators: %1$s will be replaced by a URL.
-#: app/GoogleDrive.php:1024
+#: app/GoogleDrive.php:1071
 #, php-format
 msgid "List of files could not be loaded from Google Drive. Check the <a href=\"%1$s\" target=\"_blank\">log</a> for detailed information."
 msgstr ""
 
-#: app/GoogleDrive.php:1127
+#: app/GoogleDrive.php:1167
 msgid "Loading folder data results in an error:"
 msgstr ""
 
-#: app/GoogleDrive.php:1177
+#: app/GoogleDrive.php:1217
 msgid "Import"
 msgstr ""
 
-#: app/GoogleDrive.php:1179
+#: app/GoogleDrive.php:1219
 msgid "File-type is not supported"
 msgstr ""
 
-#: app/GoogleDrive.php:1208
+#: app/GoogleDrive.php:1248
 msgid "Go to Google Drive"
 msgstr ""
 
-#: app/GoogleDrive.php:1212
+#: app/GoogleDrive.php:1252
 msgid "Settings"
 msgstr ""
 
-#: app/GoogleDrive.php:1216
+#: app/GoogleDrive.php:1256
 msgid "Import active directory"
 msgstr ""
 
-#: app/GoogleDrive.php:1220
+#: app/GoogleDrive.php:1260
 msgid "Save active directory as your external source"
 msgstr ""
 
-#: app/GoogleDrive.php:1280
+#: app/GoogleDrive.php:1320
 msgid "Connect"
 msgstr ""
 
-#: app/GoogleDrive.php:1423
+#: app/GoogleDrive.php:1463
 msgid "Error on request to get refreshed token."
 msgstr ""
 
-#: app/GoogleDrive.php:1474
+#: app/GoogleDrive.php:1514
 msgid "GoogleDrive is not connected!"
 msgstr ""
 
 #. translators: %1$s will be replaced with a URL.
-#: app/GoogleDrive.php:1480
+#: app/GoogleDrive.php:1520
 msgid "GoogleDrive is not connected."
 msgstr ""
 
 #. translators: %1$s will be replaced with a URL.
-#: app/GoogleDrive.php:1483
+#: app/GoogleDrive.php:1523
 #, php-format
 msgid "GoogleDrive is not connected. Please create a connection to Google Drive <a href=\"%1$s\">here</a>."
 msgstr ""
 
-#: app/GoogleDrive.php:1501
+#: app/GoogleDrive.php:1541
 msgid "GoogleDrive access token is not valid."
 msgstr ""
 
-#: app/GoogleDrive.php:1506 app/GoogleDrive.php:1525
+#: app/GoogleDrive.php:1546 app/GoogleDrive.php:1565
 msgid "GoogleDrive access token appears to be no longer valid."
 msgstr ""
 
 #. translators: %1$s will be replaced with a URL.
-#: app/GoogleDrive.php:1509 app/GoogleDrive.php:1528
+#: app/GoogleDrive.php:1549 app/GoogleDrive.php:1568
 #, php-format
 msgid "GoogleDrive access token appears to be no longer valid. Please create a new connection to Google Drive <a href=\"%1$s\">here</a>."
 msgstr ""
 
-#: app/GoogleDrive.php:1520
+#: app/GoogleDrive.php:1560
 msgid "Error during check of GoogleDrive access token:"
 msgstr ""
 
-#: app/GoogleDrive.php:1629
+#: app/GoogleDrive.php:1669
 msgid "GoogleDrive"
 msgstr ""
 
-#: app/GoogleDrive.php:1678
+#: app/GoogleDrive.php:1718
 msgid "Connect Google Drive"
 msgstr ""
 
-#: app/GoogleDrive.php:1680
+#: app/GoogleDrive.php:1720
 msgid "You will be directed to a Google dialog. Follow this and confirm the approvals."
 msgstr ""
 
-#: app/GoogleDrive.php:1681
+#: app/GoogleDrive.php:1721
 msgid "You will also be directed to the website of the plugin developer. This is necessary to allow you to easily share your Google Drive account. No data about you will be stored in this context."
 msgstr ""
 
-#: app/GoogleDrive.php:1682
+#: app/GoogleDrive.php:1722
 msgid "Click on the button below to connect your Google Drive with your website."
 msgstr ""
 
-#: app/GoogleDrive.php:1693 app/GoogleDrive.php:1731
+#: app/GoogleDrive.php:1733 app/GoogleDrive.php:1771
 msgid "Cancel"
 msgstr ""
 
-#: app/GoogleDrive.php:1717
+#: app/GoogleDrive.php:1757
 msgid "Disconnect Google Drive"
 msgstr ""
 
-#: app/GoogleDrive.php:1719
+#: app/GoogleDrive.php:1759
 msgid "Click on the button below to disconnect your Google Drive from your website."
 msgstr ""
 
-#: app/GoogleDrive.php:1720
+#: app/GoogleDrive.php:1760
 msgid "Files you downloaded in the media library will still be there and usable."
 msgstr ""
 
-#: app/GoogleDrive.php:1726
+#: app/GoogleDrive.php:1766
 msgid "Disconnect now"
 msgstr ""
 
-#: app/GoogleDrive.php:1787
+#: app/GoogleDrive.php:1827
 msgid "Error during loading of file permissions from Google Drive. Error:"
 msgstr ""
 
-#: app/GoogleDrive.php:1828
+#: app/GoogleDrive.php:1868
 msgid "Access Token"
 msgstr ""
 
-#: app/GoogleDrive.php:1829 app/GoogleDrive.php:1873
+#: app/GoogleDrive.php:1869 app/GoogleDrive.php:1913
 msgid "Enter your access token"
 msgstr ""
 
-#: app/GoogleDrive.php:1836
+#: app/GoogleDrive.php:1876
 msgid "Folder ID"
 msgstr ""
 
-#: app/GoogleDrive.php:1837
+#: app/GoogleDrive.php:1877
 msgid "You can find the folder ID in the URL when you show it in your browser."
 msgstr ""
 
-#: app/GoogleDrive.php:1838
+#: app/GoogleDrive.php:1878
 msgid "Enter a folder ID"
 msgstr ""
 
-#: app/GoogleDrive.php:1869
+#: app/GoogleDrive.php:1909
 msgid "Connect to your Google Drive"
 msgstr ""
 
 #. translators: %1$s will be replaced by a URL.
-#: app/GoogleDrive.php:1889
+#: app/GoogleDrive.php:1929
 #, php-format
 msgid "Set your credentials <a href=\"%1$s\">here</a>."
 msgstr ""
 
-#: app/GoogleDrive.php:1892 app/GoogleDrive.php:1903
+#: app/GoogleDrive.php:1932 app/GoogleDrive.php:1943
 msgid "An access token has already been set by an administrator in the plugin settings. Just connect for show the files."
 msgstr ""
 
 #. translators: %1$s will be replaced by a URL.
-#: app/GoogleDrive.php:1895
+#: app/GoogleDrive.php:1935
 #, php-format
 msgid "Your credentials are already set <a href=\"%1$s\">here</a>. Just connect for show the files."
 msgstr ""
 
 #. translators: %1$s will be replaced by a URL.
-#: app/GoogleDrive.php:1907
+#: app/GoogleDrive.php:1947
 #, php-format
 msgid "Your access token is already set <a href=\"%1$s\">here</a>. Just connect for show the files."
 msgstr ""
 
 #. translators: %1$s will be replaced by a URL.
-#: app/GoogleDrive.php:1913
+#: app/GoogleDrive.php:1953
 #, php-format
 msgid "Your access token is already set <a href=\"%1$s\">in your profile</a>. Just connect for show the files."
 msgstr ""
 
 #. translators: %1$s will be replaced by a URL.
-#: app/GoogleDrive.php:1927
+#: app/GoogleDrive.php:1967
 #, php-format
 msgid "Get your access token <a href=\"%1$s\">here</a>."
 msgstr ""
 
-#: app/GoogleDrive.php:1954
+#: app/GoogleDrive.php:1994
 msgid "Direct input of API credentials"
 msgstr ""
 
@@ -372,7 +372,7 @@ msgid "Wrong format for access tokens!"
 msgstr ""
 
 #. translators: %1$s will be replaced by the User ID.
-#: app/GoogleDrive/Cli.php:58 app/GoogleDrive/Cli.php:140
+#: app/GoogleDrive/Cli.php:58 app/GoogleDrive/Cli.php:137
 #, php-format
 msgid "User with ID %1$d could not be found!"
 msgstr ""
@@ -384,29 +384,29 @@ msgid "List of files could not be loaded from Google Drive for user %1$s. Error:
 msgstr ""
 
 #. translators: %1$s will be replaced by the username.
-#: app/GoogleDrive/Cli.php:99
+#: app/GoogleDrive/Cli.php:96
 #, php-format
 msgid "No files found for user %1$s!"
 msgstr ""
 
 #. translators: %1$d will be replaced by a number.
-#: app/GoogleDrive/Cli.php:104
+#: app/GoogleDrive/Cli.php:101
 #, php-format
 msgid "%1$d files found for user %2$s."
 msgstr ""
 
-#: app/GoogleDrive/Cli.php:126
+#: app/GoogleDrive/Cli.php:123
 msgid "No access token found for any user!"
 msgstr ""
 
 #. translators: %1$s will be replaced by the username.
-#: app/GoogleDrive/Cli.php:151
+#: app/GoogleDrive/Cli.php:148
 #, php-format
 msgid "Token has been refreshed for user %1$s."
 msgstr ""
 
 #. translators: %1$s will be replaced by the username.
-#: app/GoogleDrive/Cli.php:155
+#: app/GoogleDrive/Cli.php:152
 #, php-format
 msgid "Token has not been refreshed for user %1$s."
 msgstr ""
@@ -443,50 +443,50 @@ msgstr ""
 msgid "File could not be delete from Google Drive. Error:"
 msgstr ""
 
-#: app/GoogleDrive/Protocol.php:101 app/GoogleDrive/Protocol.php:277
+#: app/GoogleDrive/Protocol.php:100 app/GoogleDrive/Protocol.php:276
 msgid "Access token missing to connect to Google Drive!"
 msgstr ""
 
-#: app/GoogleDrive/Protocol.php:118
+#: app/GoogleDrive/Protocol.php:117
 msgid "Specified URL does not contain a file ID from Google Drive!"
 msgstr ""
 
-#: app/GoogleDrive/Protocol.php:126 app/GoogleDrive/Protocol.php:347
+#: app/GoogleDrive/Protocol.php:125 app/GoogleDrive/Protocol.php:338
 msgid "Specified URL already exist in your media library."
 msgstr ""
 
-#: app/GoogleDrive/Protocol.php:139 app/GoogleDrive/Protocol.php:290 app/GoogleDrive/Protocol.php:457
+#: app/GoogleDrive/Protocol.php:138 app/GoogleDrive/Protocol.php:289 app/GoogleDrive/Protocol.php:451
 msgid "Google Drive client could not be initiated!"
 msgstr ""
 
-#: app/GoogleDrive/Protocol.php:236
+#: app/GoogleDrive/Protocol.php:235
 msgid "Google Drive client could not download the requested file! Error:"
 msgstr ""
 
-#: app/GoogleDrive/Protocol.php:357
+#: app/GoogleDrive/Protocol.php:348
 msgid "Google Drive client could not download a requested file during mass-import! Error:"
 msgstr ""
 
-#: app/GoogleDrive/Protocol.php:357
+#: app/GoogleDrive/Protocol.php:348
 msgid "Requested file:"
 msgstr ""
 
 #. translators: %1$s will be replaced by a URL.
-#: app/GoogleDrive/Protocol.php:383 app/GoogleDrive/Protocol.php:556
+#: app/GoogleDrive/Protocol.php:377 app/GoogleDrive/Protocol.php:539
 #, php-format
 msgid "Error occurred during requesting this file. Check the <a href=\"%1$s\" target=\"_blank\">log</a> for detailed information."
 msgstr ""
 
-#: app/GoogleDrive/Protocol.php:391 app/GoogleDrive/Protocol.php:564
+#: app/GoogleDrive/Protocol.php:385 app/GoogleDrive/Protocol.php:547
 msgid "The following error occurred:"
 msgstr ""
 
-#: app/GoogleDrive/Protocol.php:487
+#: app/GoogleDrive/Protocol.php:467
 msgid "Private file could not be loaded from Google Drive:"
 msgstr ""
 
 #. translators: %1$s will be replaced by the URL which is imported.
-#: app/GoogleDrive/Protocol.php:530
+#: app/GoogleDrive/Protocol.php:510
 #, php-format
 msgid "Get URL %1$s from Google Drive"
 msgstr ""

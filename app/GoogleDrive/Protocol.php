@@ -22,7 +22,6 @@ use ExternalFilesInMediaLibrary\ExternalFiles\Results\Url_Result;
 use ExternalFilesInMediaLibrary\Plugin\Helper;
 use ExternalFilesInMediaLibrary\Plugin\Log;
 use ExternalFilesFromGoogleDrive\Dependencies\Google\Service\Drive;
-use ExternalFilesFromGoogleDrive\Dependencies\Google\Service\Drive\DriveFile;
 use ExternalFilesFromGoogleDrive\Dependencies\Google\Service\Exception;
 use JsonException;
 use WP_Filesystem_Base;
@@ -303,9 +302,9 @@ class Protocol extends Protocol_Base {
 			'orderBy'  => 'name_natural',
 		);
 
-		// get the files.
+		// get the files (all parts of the list).
 		try {
-			$results = $service->files->listFiles( $query );
+			$files = GoogleDrive::get_instance()->get_all_files( $service, $query );
 		} catch ( Exception $e ) {
 			// log event.
 			Log::get_instance()->create( __( 'List of files could not be loaded from Google Drive. Error:', 'external-files-from-google-drive' ), esc_url( $this->get_url() ) . ' <code>' . wp_json_encode( $e->getErrors() ) . '</code>', 'error' );
@@ -313,9 +312,6 @@ class Protocol extends Protocol_Base {
 			// return an empty list as we could not analyse the file.
 			return array();
 		}
-
-		// get list of files.
-		$files = $results->getFiles();
 
 		// bail if list is empty.
 		if ( empty( $files ) ) {
@@ -327,11 +323,6 @@ class Protocol extends Protocol_Base {
 
 		// loop through the files and add them to the list.
 		foreach ( $files as $file_obj ) {
-			// bail if this is not a file object.
-			if ( ! $file_obj instanceof DriveFile ) {
-				continue;
-			}
-
 			// hide trashed files.
 			if ( $file_obj->getTrashed() ) {
 				continue;
@@ -375,8 +366,11 @@ class Protocol extends Protocol_Base {
 
 			// and save the file there.
 			try {
-				$wp_filesystem->put_contents( $entry['tmp-file'], $response->getBody()->getContents() );
+				$this->save_response_to_file( $response, $entry['tmp-file'] );
 			} catch ( Error $e ) {
+				// clean up the tmp file.
+				$wp_filesystem->delete( $entry['tmp-file'] );
+
 				// create the error entry.
 				$error_obj = new Url_Result();
 				/* translators: %1$s will be replaced by a URL. */
@@ -467,21 +461,7 @@ class Protocol extends Protocol_Base {
 		try {
 			$service  = new Drive( $client );
 			$response = $service->files->get( $file_id, array( 'alt' => 'media' ) );
-			$body     = $response->getBody(); // @phpstan-ignore method.notFound
-			$handle   = fopen( $tmp_file, 'wb' ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fopen
-
-			// bail if tmp file could not be opened.
-			if ( ! $handle ) {
-				return false;
-			}
-
-			// save the file in parts.
-			while ( ! $body->eof() ) {
-				fwrite( $handle, $body->read( 1024 * 1024 ) ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fwrite
-			}
-
-			// close the file.
-			fclose( $handle ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose
+			$this->save_response_to_file( $response, $tmp_file );
 		} catch ( \Exception | Error $e ) {
 			// log this event.
 			Log::get_instance()->create( __( 'Private file could not be loaded from Google Drive:', 'external-files-from-google-drive' ) . ' <code>' . esc_html( $e->getMessage() ) . '</code>', esc_url( $url ), 'error' );
@@ -548,8 +528,11 @@ class Protocol extends Protocol_Base {
 
 		// and save the file there.
 		try {
-			$wp_filesystem->put_contents( $entry['tmp-file'], $response->getBody()->getContents() );
+			$this->save_response_to_file( $response, $entry['tmp-file'] );
 		} catch ( Error $e ) {
+			// clean up the tmp file.
+			$wp_filesystem->delete( $entry['tmp-file'] );
+
 			// create the error entry.
 			$error_obj = new Url_Result();
 			/* translators: %1$s will be replaced by a URL. */
@@ -605,5 +588,55 @@ class Protocol extends Protocol_Base {
 	 */
 	public function get_title(): string {
 		return 'Google Drive';
+	}
+
+	/**
+	 * Save the body of the given response of Google Drive in the given file.
+	 *
+	 * The body is read and written in parts, so the file is not loaded completely into memory.
+	 *
+	 * @since 1.4.0 Available since 1.4.0.
+	 *
+	 * @param mixed  $response The response of the request for the content of a file ("alt" = "media").
+	 * @param string $file     The absolute path to the file.
+	 *
+	 * @return void
+	 * @throws Error If the response has no body or the file could not be written.
+	 */
+	private function save_response_to_file( mixed $response, string $file ): void {
+		// bail if the response has no body.
+		if ( ! $response instanceof \ExternalFilesFromGoogleDrive\Dependencies\Psr\Http\Message\ResponseInterface ) {
+			throw new Error( 'Google Drive returns no file content.' );
+		}
+
+		// get the body.
+		$body = $response->getBody();
+
+		// open the file.
+		$handle = fopen( $file, 'wb' ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fopen
+
+		// bail if the file could not be opened.
+		if ( false === $handle ) {
+			throw new Error( 'Local file could not be opened for the download.' );
+		}
+
+		// rewind the body, if possible, to save it completely.
+		if ( $body->isSeekable() ) {
+			$body->rewind();
+		}
+
+		// save the file in parts.
+		while ( ! $body->eof() ) {
+			$written = fwrite( $handle, $body->read( 1024 * 1024 ) ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fwrite
+
+			// bail if the file could not be written.
+			if ( false === $written ) {
+				fclose( $handle ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose
+				throw new Error( 'Local file could not be written.' );
+			}
+		}
+
+		// close the file.
+		fclose( $handle ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose
 	}
 }
