@@ -18,3 +18,7 @@ The name of each constant is `EFML_` + the name of the service + `_` + the name 
 define( 'EFML_GOOGLE_DRIVE_CLIENT_ID', 'xy.apps.googleusercontent.com' );
 define( 'EFML_GOOGLE_DRIVE_CLIENT_SECRET', 'your-client-secret' );
 ```
+
+## Only one connection
+
+Several connections (e.g. `EFML_GOOGLE_DRIVE_CONNECTIONS`) are not possible for Google Drive, as only the API credentials of one OAuth client could be defined as constants.

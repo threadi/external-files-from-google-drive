@@ -18,3 +18,7 @@ Der Name jeder Konstante setzt sich zusammen aus `EFML_` + Name des Dienstes + `
 define( 'EFML_GOOGLE_DRIVE_CLIENT_ID', 'xy.apps.googleusercontent.com' );
 define( 'EFML_GOOGLE_DRIVE_CLIENT_SECRET', 'dein-client-secret' );
 ```
+
+## Nur eine Verbindung
+
+Mehrere Verbindungen (z. B. `EFML_GOOGLE_DRIVE_CONNECTIONS`) sind bei Google Drive nicht möglich, weil sich als Konstanten nur die API-Zugangsdaten eines OAuth-Clients festlegen lassen.

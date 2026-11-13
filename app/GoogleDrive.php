@@ -2355,4 +2355,15 @@ class GoogleDrive extends Service_Base implements Service {
 			throw $this->get_connection_test_exception( $e, __( 'The test file could not be deleted in Google Drive.', 'external-files-from-google-drive' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
 		}
 	}
+
+	/**
+	 * Return further search terms of this service, separated by commas (e.g. for the command palette).
+	 *
+	 * Requires "External Files in Media Library" 6.0.0 or newer.
+	 *
+	 * @return string
+	 */
+	protected function get_keywords(): string {
+		return 'Google, Google Drive, cloud';
+	}
 }
