@@ -915,8 +915,8 @@ class GoogleDrive extends Service_Base implements Service {
 			// set the token.
 			$this->set_access_token( $access_token );
 
-			// redirect to the config URL.
-			wp_safe_redirect( $this->get_config_url() );
+			// redirect to the config URL or back to the quickstart.
+			wp_safe_redirect( $this->get_url_after_connection() );
 			exit;
 		}
 
@@ -952,8 +952,8 @@ class GoogleDrive extends Service_Base implements Service {
 		// save the token.
 		$this->set_access_token( $access_token );
 
-		// forward user.
-		wp_safe_redirect( $this->get_config_url() );
+		// forward user to the config URL or back to the quickstart.
+		wp_safe_redirect( $this->get_url_after_connection() );
 		exit;
 	}
 
@@ -1214,6 +1214,60 @@ class GoogleDrive extends Service_Base implements Service {
 				'hint'   => '<span class="dashicons dashicons-editor-help" title="' . esc_attr__( 'File-type is not supported', 'external-files-from-google-drive' ) . '"></span>',
 			),
 		);
+	}
+
+	/**
+	 * Return the URL, to which the user is forwarded after connecting Google Drive.
+	 *
+	 * This is the quickstart, if the connection has been started there, otherwise the configuration (requires
+	 * External Files in Media Library 6.0.0 for the quickstart).
+	 *
+	 * @return string
+	 */
+	private function get_url_after_connection(): string {
+		// use the URL of the main plugin, which knows the quickstart.
+		if ( method_exists( $this, 'get_oauth_return_url' ) ) { // @phpstan-ignore function.alreadyNarrowedType
+			return $this->get_oauth_return_url();
+		}
+
+		// return the config URL otherwise.
+		return $this->get_config_url();
+	}
+
+	/**
+	 * Return the dialog to connect Google Drive, if it must be connected before it could be used in the quickstart
+	 * (requires External Files in Media Library 6.0.0).
+	 *
+	 * Returns an empty array, if Google Drive is already connected, if the access token is entered manually or if
+	 * the actual user is not allowed to connect it.
+	 *
+	 * @since 1.4.0 Available since 1.4.0.
+	 *
+	 * @return array<string,mixed>
+	 */
+	public function get_setup_connect_dialog(): array {
+		// bail if the access token is entered manually.
+		if ( $this->is_mode( 'manually' ) ) {
+			return array();
+		}
+
+		// bail if Google Drive is already connected.
+		if ( ! empty( $this->get_access_token() ) ) {
+			return array();
+		}
+
+		// bail if the connection for the whole website must not be changed by the actual user.
+		if ( $this->is_access_token_global() && ! current_user_can( 'manage_options' ) ) {
+			return array();
+		}
+
+		// bail if the own OAuth client should be used, but its credentials are missing.
+		if ( $this->is_mode( 'direct_input' ) && '' === $this->get_client_secret() ) {
+			return array();
+		}
+
+		// return the dialog to connect.
+		return $this->get_connect_dialog();
 	}
 
 	/**

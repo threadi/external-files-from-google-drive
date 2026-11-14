@@ -973,4 +973,83 @@ class GoogleDrive extends externalFilesFromGoogleDriveTests {
 			$this->assertStringContainsString( 'efml-setup-guide', $service->get_setup_guide_html() );
 		}
 	}
+
+	/**
+	 * Test the dialog to connect Google Drive in the quickstart.
+	 *
+	 * @return void
+	 */
+	public function test_get_setup_connect_dialog(): void {
+		$google_drive = $this->get_google_drive();
+		$this->do_login();
+
+		// test 1: global mode without connection shows the dialog for administrators.
+		$this->set_mode( 'global' );
+		delete_option( 'eml_google_drive_access_tokens' );
+		$dialog = $google_drive->get_setup_connect_dialog();
+		$this->assertNotEmpty( $dialog );
+		$this->assertStringContainsString( 'eml_google_drive_init', $dialog['buttons'][0]['action'] );
+
+		// test 2: not for users, which are not allowed to change the connection of the website.
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'editor' ) ) );
+		$this->assertEmpty( $google_drive->get_setup_connect_dialog() );
+		$this->do_login();
+
+		// test 3: not if Google Drive is connected.
+		$this->connect();
+		$this->assertEmpty( $google_drive->get_setup_connect_dialog() );
+		delete_option( 'eml_google_drive_access_tokens' );
+
+		// test 4: not if the access token is entered manually.
+		$this->set_mode( 'manually' );
+		$this->assertEmpty( $google_drive->get_setup_connect_dialog() );
+
+		// test 5: in user mode for each user without connection.
+		$this->set_mode( 'user' );
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'editor' ) ) );
+		$this->assertNotEmpty( $google_drive->get_setup_connect_dialog() );
+		$this->do_login();
+
+		// test 6: the own OAuth client needs its credentials.
+		$this->set_mode( 'direct_input' );
+		$this->assertEmpty( $google_drive->get_setup_connect_dialog() );
+		update_option( 'eml_google_drive_credential_client_id', $google_drive->encrypt_value( 'my-client-id' ) );
+		update_option( 'eml_google_drive_credential_client_secret', $google_drive->encrypt_value( 'my-client-secret' ) );
+		$this->assertNotEmpty( $google_drive->get_setup_connect_dialog() );
+		delete_option( 'eml_google_drive_credential_client_id' );
+		delete_option( 'eml_google_drive_credential_client_secret' );
+		$this->set_mode( 'global' );
+	}
+
+	/**
+	 * Test the URL, to which the user is forwarded after connecting Google Drive.
+	 *
+	 * @return void
+	 */
+	public function test_url_after_connection(): void {
+		$google_drive = $this->get_google_drive();
+		$this->do_login();
+		$this->set_mode( 'global' );
+
+		// without the quickstart the configuration is used.
+		$url = $this->call_method( $google_drive, 'get_url_after_connection' );
+		$this->assertEquals( $this->call_method( $google_drive, 'get_config_url' ), $url );
+
+		// bail if the main plugin does not know the quickstart.
+		if ( ! class_exists( '\ExternalFilesInMediaLibrary\Plugin\Setup' ) ) {
+			return;
+		}
+
+		// after starting the connection in the quickstart, the quickstart is continued.
+		update_user_meta(
+			get_current_user_id(),
+			\ExternalFilesInMediaLibrary\Plugin\Setup::OAUTH_RETURN_META,
+			array(
+				'service' => $google_drive->get_name(),
+				'time'    => time(),
+			)
+		);
+		$url = $this->call_method( $google_drive, 'get_url_after_connection' );
+		$this->assertStringContainsString( \ExternalFilesInMediaLibrary\Plugin\Setup::CONTINUE_PARAMETER . '=1', $url );
+	}
 }

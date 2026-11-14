@@ -13,6 +13,7 @@
 - Added support for the connection test in the directory listing (requires External Files in Media Library 6.0.0)
 - Directories and the import of all files are imported file by file via the import of External Files in Media Library 6.0.0: also with tens of thousands of files, in the background if necessary
 - Added search terms for the command palette of WordPress, e.g. other names of the service (requires External Files in Media Library 6.0.0)
+- Google Drive could be connected within the quickstart of External Files in Media Library 6.0.0, afterwards the quickstart continues
 
 ### Changed
 
