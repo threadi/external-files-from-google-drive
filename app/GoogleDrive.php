@@ -2366,4 +2366,32 @@ class GoogleDrive extends Service_Base implements Service {
 	protected function get_keywords(): string {
 		return 'Google, Google Drive, cloud';
 	}
+
+	/**
+	 * Return the help for the setup of this service.
+	 *
+	 * @return array{intro?: string, steps?: array<int,string>, hints?: array<int,string>, code?: array{label: string, content: string, hint?: string}, links?: array<int,array{label: string, url: string}>}
+	 */
+	public function get_setup_guide(): array {
+		return array(
+			'intro' => __( 'You do not need to enter access data for Google Drive: connect it via the button, sign in with your Google account and allow the access to your files.', 'external-files-from-google-drive' ),
+			'steps' => array(
+				__( 'Use the Google account, whose files you would like to use.', 'external-files-from-google-drive' ),
+				__( 'To use only a folder, enter its ID. You find it in the address of the folder in your browser, after <code>/folders/</code>.', 'external-files-from-google-drive' ),
+			),
+			'hints' => array(
+				__( 'Alternatively you can use your own OAuth client of a Google Cloud project with enabled Google Drive API (type "Web application"). Enter its client ID and client secret in the settings and add the redirect URL shown there to the client.', 'external-files-from-google-drive' ),
+			),
+			'links' => array(
+				array(
+					'label' => __( 'Google Cloud console', 'external-files-from-google-drive' ),
+					'url'   => 'https://console.cloud.google.com/apis/credentials',
+				),
+				array(
+					'label' => __( 'OAuth 2.0 for web server applications', 'external-files-from-google-drive' ),
+					'url'   => 'https://developers.google.com/identity/protocols/oauth2/web-server',
+				),
+			),
+		);
+	}
 }

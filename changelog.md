@@ -4,6 +4,7 @@
 
 ### Added
 
+- Added help "Where do I find these details?" to the form (requires External Files in Media Library 6.0.0): how to connect Google Drive, find the ID of a folder and use an own OAuth client
 - Added possibility to define the API credentials for the direct input via constants, e.g. in wp-config.php (requires External Files in Media Library 6.0.0)
 - Added documentation for the constants in docs/constants.md
 - Added support for the folder structure of exported files, missing folders are created (requires External Files in Media Library 6.0.0)

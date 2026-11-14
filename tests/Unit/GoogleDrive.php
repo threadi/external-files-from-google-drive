@@ -958,4 +958,19 @@ class GoogleDrive extends externalFilesFromGoogleDriveTests {
 		$this->assertCount( 2, $files );
 		$this->assertCount( 2, $this->get_google_requests() );
 	}
+
+	/**
+	 * Test the help for the setup.
+	 *
+	 * @return void
+	 */
+	public function test_setup_guide(): void {
+		$service = \ExternalFilesFromGoogleDrive\GoogleDrive::get_instance();
+		$guide   = $service->get_setup_guide();
+		$this->assertNotEmpty( $guide['intro'] );
+		$this->assertNotEmpty( $guide['links'] );
+		if ( method_exists( $service, 'get_setup_guide_html' ) ) {
+			$this->assertStringContainsString( 'efml-setup-guide', $service->get_setup_guide_html() );
+		}
+	}
 }

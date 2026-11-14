@@ -526,3 +526,27 @@ msgstr ""
 #: app/Plugin/Configuration.php:50
 msgid "This will disable all other services except Google Drive."
 msgstr ""
+
+#: app/GoogleDrive.php:2377
+msgid "You do not need to enter access data for Google Drive: connect it via the button, sign in with your Google account and allow the access to your files."
+msgstr ""
+
+#: app/GoogleDrive.php:2379
+msgid "Use the Google account, whose files you would like to use."
+msgstr ""
+
+#: app/GoogleDrive.php:2380
+msgid "To use only a folder, enter its ID. You find it in the address of the folder in your browser, after <code>/folders/</code>."
+msgstr ""
+
+#: app/GoogleDrive.php:2383
+msgid "Alternatively you can use your own OAuth client of a Google Cloud project with enabled Google Drive API (type \"Web application\"). Enter its client ID and client secret in the settings and add the redirect URL shown there to the client."
+msgstr ""
+
+#: app/GoogleDrive.php:2387
+msgid "Google Cloud console"
+msgstr ""
+
+#: app/GoogleDrive.php:2391
+msgid "OAuth 2.0 for web server applications"
+msgstr ""
