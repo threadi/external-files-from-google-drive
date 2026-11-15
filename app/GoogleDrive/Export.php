@@ -66,18 +66,6 @@ class Export extends Export_Base {
 		// get the main object.
 		$google_drive_object = GoogleDrive::get_instance();
 
-		// set the fields on it.
-		$google_drive_object->set_fields( isset( $credentials['fields'] ) ? $credentials['fields'] : array() );
-
-		// get the client.
-		$client_obj = new Client( $google_drive_object->get_access_token() );
-		$client     = $client_obj->get_client();
-
-		// bail if client is not a Client object.
-		if ( ! $client instanceof \ExternalFilesFromGoogleDrive\Dependencies\Google\Client ) {
-			return false;
-		}
-
 		// get the file path.
 		$file_path = get_attached_file( $attachment_id, true );
 
@@ -95,6 +83,164 @@ class Export extends Export_Base {
 
 		// bail if mime type could not be loaded.
 		if ( ! is_string( $mime_type ) ) {
+			return false;
+		}
+
+		// upload the file.
+		$file_id = $this->upload( $file_path, $mime_type, $target, $credentials );
+
+		// bail if it could not be uploaded.
+		if ( false === $file_id ) {
+			return false;
+		}
+
+		// save the used file ID.
+		update_post_meta( $attachment_id, 'efml_google_drive_file_id', $file_id );
+
+		// return the internal URL for this file, if it should be saved privately.
+		if ( ! empty( $credentials['private'] ) ) {
+			return $google_drive_object->get_url_mark() . $file_id;
+		}
+
+		// return the public URL for this file.
+		return $google_drive_object->get_public_url_for_file_id( $file_id );
+	}
+
+	/**
+	 * Return whether this service could export the sizes of images.
+	 *
+	 * Requires "External Files in Media Library" 6.0.0 or newer.
+	 *
+	 * @since 1.4.0 Available since 1.4.0.
+	 *
+	 * @return bool
+	 */
+	public function supports_sizes(): bool {
+		return true;
+	}
+
+	/**
+	 * Export an additional file of an attachment (e.g. a size of an image) to Google Drive.
+	 *
+	 * @since 1.4.0 Available since 1.4.0.
+	 *
+	 * @param int                 $attachment_id The attachment ID.
+	 * @param string              $source        The absolute path of the local file.
+	 * @param string              $target        The target of the file.
+	 * @param array<string,mixed> $credentials   The credentials.
+	 *
+	 * @return string|bool
+	 */
+	public function export_size( int $attachment_id, string $source, string $target, array $credentials ): string|bool {
+		// bail if the file does not exist.
+		if ( ! file_exists( $source ) ) {
+			return false;
+		}
+
+		// get the mime type of this file.
+		$file_type = wp_check_filetype( basename( $source ) );
+		$mime_type = is_string( $file_type['type'] ) && '' !== $file_type['type'] ? $file_type['type'] : (string) get_post_mime_type( $attachment_id );
+
+		// upload the file.
+		$file_id = $this->upload( $source, $mime_type, $target, $credentials );
+
+		// bail if it could not be uploaded.
+		if ( false === $file_id ) {
+			return false;
+		}
+
+		// get the main object.
+		$google_drive_object = GoogleDrive::get_instance();
+
+		// return the internal URL for private files.
+		if ( ! empty( $credentials['private'] ) ) {
+			return $google_drive_object->get_url_mark() . $file_id;
+		}
+
+		// return the public URL.
+		return $google_drive_object->get_public_url_for_file_id( $file_id );
+	}
+
+	/**
+	 * Delete an additional file of an attachment in Google Drive.
+	 *
+	 * @since 1.4.0 Available since 1.4.0.
+	 *
+	 * @param int                 $attachment_id The attachment ID.
+	 * @param string              $url           The URL of the file.
+	 * @param string              $target        The target of the file.
+	 * @param array<string,mixed> $credentials   The credentials.
+	 *
+	 * @return bool
+	 */
+	public function delete_size( int $attachment_id, string $url, string $target, array $credentials ): bool {
+		// get the main object.
+		$google_drive_object = GoogleDrive::get_instance();
+
+		// get the file ID from the URL.
+		$file_id = '';
+		if ( str_starts_with( $url, $google_drive_object->get_url_mark() ) ) {
+			$file_id = substr( $url, strlen( $google_drive_object->get_url_mark() ) );
+		} else {
+			$query = array();
+			wp_parse_str( (string) wp_parse_url( $url, PHP_URL_QUERY ), $query );
+			$file_id = isset( $query['id'] ) && is_string( $query['id'] ) ? $query['id'] : '';
+		}
+
+		// bail if no file ID could be detected.
+		if ( '' === $file_id ) {
+			return false;
+		}
+
+		// set the fields.
+		$google_drive_object->set_fields( isset( $credentials['fields'] ) ? $credentials['fields'] : array() );
+
+		// get the client.
+		$client = ( new Client( $google_drive_object->get_access_token() ) )->get_client();
+
+		// bail if client is not a Client object.
+		if ( ! $client instanceof \ExternalFilesFromGoogleDrive\Dependencies\Google\Client ) {
+			return false;
+		}
+
+		// delete the file.
+		try {
+			( new Drive( $client ) )->files->delete( $file_id );
+		} catch ( Exception $e ) {
+			// log this event.
+			Log::get_instance()->create( __( 'File could not be delete from Google Drive. Error:', 'external-files-from-google-drive' ) . ' <code>' . esc_html( $e->getMessage() ) . '</code>', $url, 'error' );
+
+			// do nothing more.
+			return false;
+		}
+
+		// return true as the file has been deleted.
+		return true;
+	}
+
+	/**
+	 * Upload the given local file to the given target in Google Drive and return the ID of the file, or false.
+	 *
+	 * @param string              $file_path   The absolute path of the local file.
+	 * @param string              $mime_type   The mime type of the file.
+	 * @param string              $target      The target.
+	 * @param array<string,mixed> $credentials The credentials.
+	 *
+	 * @return string|false
+	 */
+	private function upload( string $file_path, string $mime_type, string $target, array $credentials ): string|false {
+		// get the main object.
+		$google_drive_object = GoogleDrive::get_instance();
+
+		// set the fields on it.
+		$google_drive_object->set_fields( isset( $credentials['fields'] ) ? $credentials['fields'] : array() );
+
+		// get the client.
+		$client_obj = new Client( $google_drive_object->get_access_token() );
+		$client     = $client_obj->get_client();
+
+		// bail if client is not a Client object.
+		if ( ! $client instanceof \ExternalFilesFromGoogleDrive\Dependencies\Google\Client ) {
 			return false;
 		}
 
@@ -184,19 +330,8 @@ class Export extends Export_Base {
 				return false;
 			}
 
-			// get the file ID.
-			$file_id = $result->id;
-
-			// save the used file ID.
-			update_post_meta( $attachment_id, 'efml_google_drive_file_id', $file_id );
-
-			// return the internal URL for this file, if it should be saved privately.
-			if ( ! empty( $credentials['private'] ) ) {
-				return $google_drive_object->get_url_mark() . $file_id;
-			}
-
-			// return the public URL for this file.
-			return $google_drive_object->get_public_url_for_file_id( $file_id );
+			// return the ID of the file.
+			return (string) $result->id;
 		} catch ( Exception $e ) {
 			// log this event.
 			Log::get_instance()->create( __( 'File could not be uploaded to Google Drive. Error:', 'external-files-from-google-drive' ) . ' <code>' . $e->getMessage() . '</code>', $target, 'error' );
