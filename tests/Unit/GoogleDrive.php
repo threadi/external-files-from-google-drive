@@ -1052,4 +1052,54 @@ class GoogleDrive extends externalFilesFromGoogleDriveTests {
 		$url = $this->call_method( $google_drive, 'get_url_after_connection' );
 		$this->assertStringContainsString( \ExternalFilesInMediaLibrary\Plugin\Setup::CONTINUE_PARAMETER . '=1', $url );
 	}
+
+	/**
+	 * Test that only users with the capabilities could connect Google Drive, and the connection for the whole
+	 * website only with the capability for the settings.
+	 *
+	 * @return void
+	 */
+	public function test_connection_change_requires_capability(): void {
+		$google_drive = $this->get_google_drive();
+
+		// a subscriber is not allowed.
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'subscriber' ) ) );
+		$this->assertFalse( $this->call_method( $google_drive, 'is_connection_change_allowed' ) );
+
+		// a user with the capabilities for external files and Google Drive is allowed to change their own connection.
+		$user_id = self::factory()->user->create( array( 'role' => 'editor' ) );
+		$user    = get_user_by( 'id', $user_id );
+		$user->add_cap( EFML_CAP_NAME );
+		$user->add_cap( 'efml_cap_' . $google_drive->get_name() );
+		wp_set_current_user( $user_id );
+		update_option( 'eml_' . $google_drive->get_name() . '_credentials_vault', 'user' );
+		$this->assertTrue( $this->call_method( $google_drive, 'is_connection_change_allowed' ) );
+
+		// but not the connection for the whole website.
+		update_option( 'eml_' . $google_drive->get_name() . '_credentials_vault', 'global' );
+		$this->assertFalse( $this->call_method( $google_drive, 'is_connection_change_allowed' ) );
+
+		update_option( 'eml_' . $google_drive->get_name() . '_credentials_vault', 'manually' );
+	}
+
+	/**
+	 * Test that the response of Google is only accepted, if the actual user has started the connection shortly before.
+	 *
+	 * @return void
+	 */
+	public function test_connection_must_be_started_by_user(): void {
+		$google_drive = $this->get_google_drive();
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
+
+		// not started.
+		$this->assertFalse( $this->call_method( $google_drive, 'is_connection_started_by_user' ) );
+
+		// started now.
+		update_user_meta( get_current_user_id(), 'efml_google_drive_oauth_started', time() );
+		$this->assertTrue( $this->call_method( $google_drive, 'is_connection_started_by_user' ) );
+
+		// started too long ago.
+		update_user_meta( get_current_user_id(), 'efml_google_drive_oauth_started', time() - HOUR_IN_SECONDS );
+		$this->assertFalse( $this->call_method( $google_drive, 'is_connection_started_by_user' ) );
+	}
 }

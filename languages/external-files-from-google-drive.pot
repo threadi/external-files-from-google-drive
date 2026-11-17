@@ -550,3 +550,15 @@ msgstr ""
 #: app/GoogleDrive.php:2391
 msgid "OAuth 2.0 for web server applications"
 msgstr ""
+
+#: app/GoogleDrive.php
+msgid "You are not allowed to connect Google Drive."
+msgstr ""
+
+#: app/GoogleDrive.php
+msgid "You are not allowed to disconnect Google Drive."
+msgstr ""
+
+#: app/GoogleDrive.php
+msgid "The response from Google OAuth does not match a connection started by this user and has been ignored."
+msgstr ""

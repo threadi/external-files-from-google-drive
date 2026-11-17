@@ -551,3 +551,15 @@ msgstr "Google Cloud Console"
 #: app/GoogleDrive.php:2391
 msgid "OAuth 2.0 for web server applications"
 msgstr "OAuth 2.0 für Webserver-Anwendungen"
+
+#: app/GoogleDrive.php
+msgid "You are not allowed to connect Google Drive."
+msgstr "Du darfst Google Drive nicht verbinden."
+
+#: app/GoogleDrive.php
+msgid "You are not allowed to disconnect Google Drive."
+msgstr "Du darfst die Verbindung zu Google Drive nicht trennen."
+
+#: app/GoogleDrive.php
+msgid "The response from Google OAuth does not match a connection started by this user and has been ignored."
+msgstr "Die Antwort von Google OAuth gehört zu keiner Verbindung, die dieser Benutzer gestartet hat, und wurde ignoriert."

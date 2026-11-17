@@ -44,6 +44,57 @@ use WP_User;
  */
 class GoogleDrive extends Service_Base implements Service {
 	/**
+	 * List of the callbacks to encrypt and decrypt settings with their context.
+	 *
+	 * @var array<string,callable>
+	 */
+	private array $crypt_callbacks = array();
+
+	/**
+	 * Return whether the user settings of this service are encrypted with a context.
+	 *
+	 * The main plugin saves the user settings with the context "usermeta:efml_<name>", if this returns true.
+	 *
+	 * @return bool
+	 */
+	public function is_crypt_context_supported(): bool {
+		return true;
+	}
+
+	/**
+	 * Return the callback to encrypt ("save") or decrypt ("read") a setting with its context.
+	 *
+	 * Values saved without context (by older versions) stay readable. With a main plugin, which does not
+	 * support contexts, the callbacks without context are used.
+	 *
+	 * @param string $type    The type: "save" or "read".
+	 * @param string $context The context, e.g. "option:" and the name of the option.
+	 *
+	 * @return callable
+	 */
+	protected function get_crypt_callback( string $type, string $context ): callable {
+		// return the callback, if it has been created before (the same object is needed for has_filter()).
+		$key = $type . ':' . $context;
+		if ( isset( $this->crypt_callbacks[ $key ] ) ) {
+			return $this->crypt_callbacks[ $key ];
+		}
+
+		// get the crypt object.
+		$crypt_obj = Crypt::get_instance();
+
+		// create the callback.
+		if ( 'save' === $type ) {
+			$callback = method_exists( $crypt_obj, 'get_save_callback' ) ? $crypt_obj->get_save_callback( $context ) : array( $this, 'encrypt_value' );
+		} else {
+			$callback = method_exists( $crypt_obj, 'get_read_callback' ) ? $crypt_obj->get_read_callback( $context ) : array( $this, 'decrypt_value' );
+		}
+
+		// remember and return it.
+		$this->crypt_callbacks[ $key ] = $callback;
+		return $callback;
+	}
+
+	/**
 	 * The ID of the test file of the connection test.
 	 *
 	 * @var string
@@ -56,6 +107,16 @@ class GoogleDrive extends Service_Base implements Service {
 	 * @var string
 	 */
 	protected string $name = 'google-drive';
+
+	/**
+	 * Name of the user meta, which marks the start of a connection by the user (time of the start).
+	 */
+	private const OAUTH_STARTED_META = 'efml_google_drive_oauth_started';
+
+	/**
+	 * Maximum time between the start of a connection and the return from Google (in seconds).
+	 */
+	private const OAUTH_MAX_DURATION = 30 * MINUTE_IN_SECONDS;
 
 	/**
 	 * Marker whether the values of the constants are values of the fields of this service.
@@ -321,8 +382,8 @@ class GoogleDrive extends Service_Base implements Service {
 				$setting->set_section( $section );
 				$setting->set_show_in_rest( false );
 				$setting->prevent_export( true );
-				$setting->set_read_callback( array( $this, 'decrypt_value' ) );
-				$setting->set_save_callback( array( $this, 'encrypt_value' ) );
+				$setting->set_read_callback( $this->get_crypt_callback( 'read', 'option:eml_google_drive_credential_client_id' ) );
+				$setting->set_save_callback( $this->get_crypt_callback( 'save', 'option:eml_google_drive_credential_client_id' ) );
 				$field = new Text( $settings_obj );
 				$field->set_title( __( 'Client ID', 'external-files-from-google-drive' ) );
 				$field->set_description( $description );
@@ -338,8 +399,8 @@ class GoogleDrive extends Service_Base implements Service {
 				$setting->set_section( $section );
 				$setting->set_show_in_rest( false );
 				$setting->prevent_export( true );
-				$setting->set_read_callback( array( $this, 'decrypt_value' ) );
-				$setting->set_save_callback( array( $this, 'encrypt_value' ) );
+				$setting->set_read_callback( $this->get_crypt_callback( 'read', 'option:eml_google_drive_credential_client_secret' ) );
+				$setting->set_save_callback( $this->get_crypt_callback( 'save', 'option:eml_google_drive_credential_client_secret' ) );
 				$field = new Password( $settings_obj );
 				$field->set_title( __( 'Client Secret', 'external-files-from-google-drive' ) );
 				$field->set_placeholder( 'AbCdEfG' );
@@ -464,7 +525,7 @@ class GoogleDrive extends Service_Base implements Service {
 			}
 
 			// get the value.
-			$access_token_json = Crypt::get_instance()->decrypt( get_user_meta( $user->ID, 'efml_google_drive_access_tokens', true ) );
+			$access_token_json = Crypt::get_instance()->decrypt( (string) get_user_meta( $user->ID, 'efml_google_drive_access_tokens', true ), 'usermeta:efml_google_drive_access_tokens' );
 
 			// bail if string is empty.
 			if ( empty( $access_token_json ) ) {
@@ -537,7 +598,7 @@ class GoogleDrive extends Service_Base implements Service {
 			Log::get_instance()->create( sprintf( __( 'New Google Drive access token saved for user %1$s.', 'external-files-from-google-drive' ), '<em>' . $user->display_name . '</em>' ), '', 'info', 2 );
 
 			// save the token.
-			update_user_meta( $user_id, 'efml_google_drive_access_tokens', Crypt::get_instance()->encrypt( Helper::get_json( $access_token ) ) );
+			update_user_meta( $user_id, 'efml_google_drive_access_tokens', Crypt::get_instance()->encrypt( Helper::get_json( $access_token ), 'usermeta:efml_google_drive_access_tokens' ) );
 		}
 	}
 
@@ -688,12 +749,12 @@ class GoogleDrive extends Service_Base implements Service {
 		}
 
 		// bail if the value is already decrypted during reading.
-		if ( false !== has_filter( 'option_' . $option_name, array( $this, 'decrypt_value' ) ) ) {
+		if ( false !== has_filter( 'option_' . $option_name, $this->get_crypt_callback( 'read', 'option:' . $option_name ) ) ) {
 			return $value;
 		}
 
 		// return the decrypted value.
-		return $this->decrypt_value( $value );
+		return call_user_func( $this->get_crypt_callback( 'read', 'option:' . $option_name ), $value );
 	}
 
 	/**
@@ -788,6 +849,14 @@ class GoogleDrive extends Service_Base implements Service {
 		// check nonce.
 		check_admin_referer( 'eml-google-drive-initiate', 'nonce' );
 
+		// bail if the actual user is not allowed to change the connection.
+		if ( ! $this->is_connection_change_allowed() ) {
+			wp_die( esc_html__( 'You are not allowed to connect Google Drive.', 'external-files-from-google-drive' ) );
+		}
+
+		// remember the start of the connection by this user: only then the response of Google is accepted.
+		update_user_meta( get_current_user_id(), self::OAUTH_STARTED_META, time() );
+
 		// set params for OAuth2-Request to get access to Google Drive.
 		$params = array(
 			'response_type'           => 'code',
@@ -833,6 +902,11 @@ class GoogleDrive extends Service_Base implements Service {
 		// check nonce.
 		check_admin_referer( 'eml-google-drive-disconnect', 'nonce' );
 
+		// bail if the actual user is not allowed to change the connection.
+		if ( ! $this->is_connection_change_allowed() ) {
+			wp_die( esc_html__( 'You are not allowed to disconnect Google Drive.', 'external-files-from-google-drive' ) );
+		}
+
 		// delete the token.
 		$this->delete_access_token();
 
@@ -859,6 +933,41 @@ class GoogleDrive extends Service_Base implements Service {
 	}
 
 	/**
+	 * Return whether the actual user is allowed to connect or disconnect Google Drive in the actual mode.
+	 *
+	 * The connection for the whole website could only be changed by users, who are allowed to manage the settings.
+	 *
+	 * @return bool
+	 */
+	private function is_connection_change_allowed(): bool {
+		// bail if the user is not allowed to use this service.
+		if ( ! is_user_logged_in() || ! current_user_can( EFML_CAP_NAME ) || ! current_user_can( 'efml_cap_' . $this->get_name() ) ) {
+			return false;
+		}
+
+		// the connection for the whole website.
+		if ( $this->is_mode( 'global' ) || $this->is_mode( 'direct_input' ) ) {
+			return current_user_can( 'manage_options' );
+		}
+
+		// return true as the user changes their own connection.
+		return true;
+	}
+
+	/**
+	 * Return whether the actual user has started a connection to Google Drive in the last 30 minutes.
+	 *
+	 * @return bool
+	 */
+	private function is_connection_started_by_user(): bool {
+		// get the time of the start.
+		$started = absint( get_user_meta( get_current_user_id(), self::OAUTH_STARTED_META, true ) );
+
+		// return whether it has been started in time.
+		return $started > 0 && ( time() - $started ) <= self::OAUTH_MAX_DURATION;
+	}
+
+	/**
 	 * Check for requested OAuth return URL.
 	 *
 	 * @param string $template The requested template.
@@ -871,6 +980,15 @@ class GoogleDrive extends Service_Base implements Service {
 		if ( empty( get_query_var( $this->get_oauth_slug() ) ) ) {
 			return $template;
 		}
+
+		// bail if the response does not belong to a connection, which the actual user has started and is allowed to.
+		if ( ! $this->is_connection_change_allowed() || ! $this->is_connection_started_by_user() ) {
+			Log::get_instance()->create( __( 'The response from Google OAuth does not match a connection started by this user and has been ignored.', 'external-files-from-google-drive' ), '', 'error' );
+			return Helper::get_404_template();
+		}
+
+		// the start of the connection must only be usable once.
+		delete_user_meta( get_current_user_id(), self::OAUTH_STARTED_META );
 
 		// if direct input is used, get the codes from the request.
 		if ( $this->is_mode( 'direct_input' ) ) {
@@ -1411,12 +1529,12 @@ class GoogleDrive extends Service_Base implements Service {
 			}
 
 			// do not query for trashed files.
-			if ( 1 !== absint( Crypt::get_instance()->decrypt( (string) get_user_meta( $user->ID, 'efml_google_drive_show_trashed', true ) ) ) ) {
+			if ( 1 !== absint( Crypt::get_instance()->decrypt( (string) get_user_meta( $user->ID, 'efml_google_drive_show_trashed', true ), 'usermeta:efml_google_drive_show_trashed' ) ) ) {
 				$q[] = 'trashed = false';
 			}
 
 			// do only query for my own files, not shared files.
-			if ( 1 !== absint( Crypt::get_instance()->decrypt( (string) get_user_meta( $user->ID, 'efml_google_drive_show_shared', true ) ) ) ) {
+			if ( 1 !== absint( Crypt::get_instance()->decrypt( (string) get_user_meta( $user->ID, 'efml_google_drive_show_shared', true ), 'usermeta:efml_google_drive_show_shared' ) ) ) {
 				$q[] = "'me' in owners";
 			}
 		}
@@ -1942,6 +2060,9 @@ class GoogleDrive extends Service_Base implements Service {
 	public function uninstall(): void {
 		// TODO delete for all users.
 		$this->delete_access_token();
+
+		// remove the markers of started connections of all users.
+		delete_metadata( 'user', 0, self::OAUTH_STARTED_META, '', true );
 	}
 
 	/**

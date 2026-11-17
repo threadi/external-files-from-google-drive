@@ -18,12 +18,14 @@
 
 ### Changed
 
+- Encrypted settings and access data are bound to their purpose (requires External Files in Media Library 6.0.0): an encrypted value copied into another field cannot be decrypted there; values saved by older versions stay readable and are bound to their purpose when they are saved again
 - Updated German translations, incl. the texts of earlier versions which were not translated yet
 - Removed the setting "Max. files to load per iteration", it is replaced by the import in the background
 - The import of a folder requests only the files of this folder from Google Drive
 
 ### Fixed
 
+- Fixed missing checks during the connection with Google Drive: the response of Google OAuth is only accepted for a logged-in user, who has started the connection in the last 30 minutes and is allowed to change it (before, a forged response could replace the access token for the whole website); connecting and disconnecting require the capabilities for external files and Google Drive, the connection for the whole website the capability to manage the settings
 - Fixed export of files into the main directory of Google Drive
 - Fixed missing delivery of exported files via the proxy, as the files could not be loaded for its cache
 - Fixed directory listing and import of more than 1000 files, only the first 1000 files have been used
