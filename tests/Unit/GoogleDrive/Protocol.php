@@ -143,7 +143,23 @@ class Protocol extends externalFilesFromGoogleDriveTests {
 	 */
 	public function test_get_url_infos_with_error(): void {
 		$this->connect();
-		$this->add_google_response( 'GET', 'files/file1', 404, array( 'error' => array( 'code' => 404, 'message' => 'File not found: file1.', 'errors' => array( array( 'message' => 'File not found: file1.', 'reason' => 'notFound' ) ) ) ) );
+		$this->add_google_response(
+			'GET',
+			'files/file1',
+			404,
+			array(
+				'error' => array(
+					'code'    => 404,
+					'message' => 'File not found: file1.',
+					'errors'  => array(
+						array(
+							'message' => 'File not found: file1.',
+							'reason'  => 'notFound',
+						),
+					),
+				),
+			)
+		);
 
 		$this->assertEquals( array(), $this->get_protocol( $this->mark . 'file1' )->get_url_infos() );
 		$this->assertStringContainsString( 'could not download the requested file', $this->get_log_entries( $this->mark . 'file1' )[0]['log'] );
@@ -172,8 +188,24 @@ class Protocol extends externalFilesFromGoogleDriveTests {
 				),
 			)
 		);
-		$this->add_google_response( 'GET', 'files/folder1', 200, array( 'id' => 'folder1', 'name' => 'Photos' ) );
-		$this->add_google_response( 'GET', 'files/folder2', 200, array( 'id' => 'folder2', 'name' => 'Other' ) );
+		$this->add_google_response(
+			'GET',
+			'files/folder1',
+			200,
+			array(
+				'id'   => 'folder1',
+				'name' => 'Photos',
+			)
+		);
+		$this->add_google_response(
+			'GET',
+			'files/folder2',
+			200,
+			array(
+				'id'   => 'folder2',
+				'name' => 'Other',
+			)
+		);
 		$this->add_google_file( 'file1', 'example.jpg', $this->get_example_content() );
 
 		$infos = $this->get_protocol( $this->mark . 'folder1/' )->get_url_infos();
@@ -185,34 +217,66 @@ class Protocol extends externalFilesFromGoogleDriveTests {
 	}
 
 	/**
-	 * Test the limit of files during an import of a directory via AJAX.
+	 * Test the file list of a folder: only the files of the folder are requested, page by page.
 	 *
 	 * @return void
 	 */
-	public function test_get_url_infos_for_directory_with_limit(): void {
+	public function test_get_file_list_of_folder(): void {
 		$this->connect();
-		update_option( 'eml_google_drive_limit', 2 );
-		add_filter( 'wp_doing_ajax', '__return_true' );
-		$files = array();
-		for ( $i = 1; $i <= 4; $i++ ) {
-			$files[] = array(
-				'id'          => 'file' . $i,
-				'name'        => 'example' . $i . '.jpg',
-				'parents'     => array( 'folder1' ),
-				'createdTime' => '2024-01-02T03:04:05.000Z',
-			);
-			$this->add_google_file( 'file' . $i, 'example' . $i . '.jpg', $this->get_example_content() );
-		}
-		$this->add_file_list( $files );
-		$this->add_google_response( 'GET', 'files/folder1', 200, array( 'id' => 'folder1', 'name' => 'Photos' ) );
+		$protocol = $this->get_protocol( $this->mark . 'folder1/' );
+		$this->assertTrue( $protocol->supports_file_list() );
+		$this->assertTrue( $protocol->is_directory() );
+		$this->assertTrue( $this->get_protocol( $this->mark . 'eflm-import-all' )->is_directory() );
+		$this->assertFalse( $this->get_protocol( $this->mark . 'file1' )->is_directory() );
 
-		$infos = $this->get_protocol( $this->mark . 'folder1/' )->get_url_infos();
-		remove_filter( 'wp_doing_ajax', '__return_true' );
+		// first page.
+		$this->add_google_response(
+			'GET',
+			'files',
+			200,
+			array(
+				'files'         => array(
+					array(
+						'id'          => 'file1',
+						'name'        => 'example.jpg',
+						'parents'     => array( 'folder1' ),
+						'size'        => '706',
+						'createdTime' => '2024-01-02T03:04:05.000Z',
+					),
+					array(
+						'id'          => 'file2',
+						'name'        => 'document.unknown',
+						'parents'     => array( 'folder1' ),
+						'createdTime' => '2024-01-02T03:04:05.000Z',
+					),
+				),
+				'nextPageToken' => 'page-2',
+			)
+		);
+		$page = $protocol->get_file_list( '' );
+		$this->assertIsArray( $page );
+		$this->assertEquals( 'page-2', $page['cursor'] );
+		$this->assertCount( 1, $page['files'] );
+		$this->assertEquals( $this->mark . 'file1', $page['files'][0]['url'] );
+		$this->assertEquals( \ExternalFilesFromGoogleDrive\GoogleDrive::get_instance()->get_public_url_for_file_id( 'file1' ), $page['files'][0]['media-url'] );
+		$this->assertEquals( 706, $page['files'][0]['filesize'] );
 
-		// the limit is used and a marker to load more is set.
-		$this->assertTrue( $infos['load_more'] );
-		unset( $infos['load_more'] );
-		$this->assertCount( 2, $infos );
+		// the request contains the folder and the page size.
+		$requests = $this->get_google_requests();
+		$request  = end( $requests );
+		$this->assertStringContainsString( "'folder1' in parents", $request['query']['q'] );
+		$this->assertEquals( '500', $request['query']['pageSize'] );
+	}
+
+	/**
+	 * Test the file list with an error.
+	 *
+	 * @return void
+	 */
+	public function test_get_file_list_with_error(): void {
+		$this->connect();
+		$this->add_google_response( 'GET', 'files', 500, array( 'error' => array( 'code' => 500, 'message' => 'Error' ) ) );
+		$this->assertFalse( $this->get_protocol( $this->mark . 'eflm-import-all' )->get_file_list( '' ) );
 	}
 
 	/**
@@ -265,8 +329,81 @@ class Protocol extends externalFilesFromGoogleDriveTests {
 	 */
 	public function test_get_url_infos_import_all_with_error(): void {
 		$this->connect();
-		$this->add_google_response( 'GET', 'files', 500, array( 'error' => array( 'code' => 500, 'message' => 'Error' ) ) );
+		$this->add_google_response(
+			'GET',
+			'files',
+			500,
+			array(
+				'error' => array(
+					'code'    => 500,
+					'message' => 'Error',
+				),
+			)
+		);
 
 		$this->assertEquals( array(), $this->get_protocol( $this->mark . 'eflm-import-all' )->get_url_infos() );
+	}
+
+	/**
+	 * Test the temporary file of a private file, which is loaded via the API.
+	 *
+	 * @return void
+	 */
+	public function test_get_temp_file_of_private_file(): void {
+		$this->connect();
+		$url           = 'https://drive.google.com/drive/file123';
+		$attachment_id = $this->create_local_attachment();
+		update_post_meta( $attachment_id, EFML_POST_META_URL, $url );
+		update_post_meta( $attachment_id, 'efml_private_file', 1 );
+		update_post_meta( $attachment_id, 'efml_google_drive_file_id', 'file123' );
+		$this->add_google_file( 'file123', 'example.jpg', 'my private content' );
+
+		// get the temporary file.
+		$protocol = new \ExternalFilesFromGoogleDrive\GoogleDrive\Protocol( $url );
+		$tmp_file = $protocol->get_temp_file( $url, \ExternalFilesInMediaLibrary\Plugin\Helper::get_wp_filesystem() );
+		$this->assertIsString( $tmp_file );
+		$this->assertEquals( 'my private content', file_get_contents( $tmp_file ) ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+		wp_delete_file( $tmp_file );
+	}
+
+	/**
+	 * Test the URL of the platform.
+	 *
+	 * @return void
+	 */
+	public function test_get_platform_url(): void {
+		$this->assertEquals( 'https://drive.google.com/drive/my-drive', \ExternalFilesFromGoogleDrive\GoogleDrive::get_instance()->get_platform_url() );
+	}
+
+	/**
+	 * Test that the content of a file is saved completely, also if it is larger than the parts it is written in.
+	 *
+	 * @return void
+	 */
+	public function test_save_response_to_file(): void {
+		$content  = random_bytes( 3 * 1024 * 1024 + 123 );
+		$response = new \ExternalFilesFromGoogleDrive\Dependencies\GuzzleHttp\Psr7\Response( 200, array(), $content );
+		$file     = wp_tempnam();
+
+		$this->call_method( $this->get_protocol( 'https://drive.google.com/file/d/file1' ), 'save_response_to_file', array( $response, $file ) );
+
+		$this->assertSame( md5( $content ), md5_file( $file ) );
+		wp_delete_file( $file );
+	}
+
+	/**
+	 * Test that a response without content results in an error.
+	 *
+	 * @return void
+	 */
+	public function test_save_response_to_file_without_response(): void {
+		$file = wp_tempnam();
+
+		try {
+			$this->expectException( \Error::class );
+			$this->call_method( $this->get_protocol( 'https://drive.google.com/file/d/file1' ), 'save_response_to_file', array( null, $file ) );
+		} finally {
+			wp_delete_file( $file );
+		}
 	}
 }

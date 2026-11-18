@@ -411,7 +411,23 @@ class GoogleDrive extends externalFilesFromGoogleDriveTests {
 
 		// test 2: Google Drive returns an error.
 		$this->connect();
-		$this->add_google_response( 'GET', 'files', 403, array( 'error' => array( 'code' => 403, 'message' => 'Forbidden', 'errors' => array( array( 'message' => 'Forbidden', 'reason' => 'forbidden' ) ) ) ) );
+		$this->add_google_response(
+			'GET',
+			'files',
+			403,
+			array(
+				'error' => array(
+					'code'    => 403,
+					'message' => 'Forbidden',
+					'errors'  => array(
+						array(
+							'message' => 'Forbidden',
+							'reason'  => 'forbidden',
+						),
+					),
+				),
+			)
+		);
 		$this->assertEquals( array(), $this->get_google_drive()->get_directory_listing( 'Google Drive Directory Listing' ) );
 		$this->assertStringContainsString( 'List of files could not be loaded', $this->get_log_entries()[0]['log'] );
 	}
@@ -664,8 +680,28 @@ class GoogleDrive extends externalFilesFromGoogleDriveTests {
 		$this->assertTrue( $this->get_google_drive()->is_file_public( new DriveFile( array( 'id' => 'public1' ) ), $service ) );
 
 		// test 3: error.
-		$this->add_google_response( 'GET', 'files/error1/permissions', 404, array( 'error' => array( 'code' => 404, 'message' => 'Not found' ) ) );
-		$this->assertFalse( $this->get_google_drive()->is_file_public( new DriveFile( array( 'id' => 'error1', 'name' => 'error.jpg' ) ), $service ) );
+		$this->add_google_response(
+			'GET',
+			'files/error1/permissions',
+			404,
+			array(
+				'error' => array(
+					'code'    => 404,
+					'message' => 'Not found',
+				),
+			)
+		);
+		$this->assertFalse(
+			$this->get_google_drive()->is_file_public(
+				new DriveFile(
+					array(
+						'id'   => 'error1',
+						'name' => 'error.jpg',
+					)
+				),
+				$service
+			)
+		);
 		$this->assertNotEmpty( $this->get_log_entries( 'error.jpg' ) );
 	}
 
@@ -863,5 +899,207 @@ class GoogleDrive extends externalFilesFromGoogleDriveTests {
 	 */
 	public function test_get_export_object(): void {
 		$this->assertSame( \ExternalFilesFromGoogleDrive\GoogleDrive\Export::get_instance(), $this->get_google_drive()->get_export_object() );
+	}
+
+	/**
+	 * Test the directory listing with more files than Google Drive returns with one request.
+	 *
+	 * @return void
+	 */
+	public function test_get_directory_listing_with_multiple_parts(): void {
+		$this->connect();
+		$file = static function ( string $id, string $name ): array {
+			return array(
+				'id'          => $id,
+				'name'        => $name,
+				'mimeType'    => 'application/pdf',
+				'size'        => '1024',
+				'createdTime' => '2024-01-02T03:04:05.000Z',
+			);
+		};
+
+		// the second part is requested with the token of the first part.
+		$this->add_google_response( 'GET', 'files', 200, array( 'files' => array( $file( 'file3', 'third.pdf' ) ) ), array( 'pageToken' => 'part-3' ) );
+		$this->add_google_response( 'GET', 'files', 200, array( 'files' => array( $file( 'file2', 'second.pdf' ) ), 'nextPageToken' => 'part-3' ), array( 'pageToken' => 'part-2' ) );
+		$this->add_google_response( 'GET', 'files', 200, array( 'files' => array( $file( 'file1', 'first.pdf' ) ), 'nextPageToken' => 'part-2' ) );
+
+		$listing = $this->get_google_drive()->get_directory_listing( 'Google Drive Directory Listing' );
+
+		$this->assertEquals( array( 'first.pdf', 'second.pdf', 'third.pdf' ), array_column( $listing['Google Drive Directory Listing']['files'], 'title' ) );
+		$this->assertCount( 3, $this->get_google_requests() );
+	}
+
+	/**
+	 * Test that the list of files stops, if Google Drive returns the same token again.
+	 *
+	 * @return void
+	 */
+	public function test_get_all_files_with_repeated_token(): void {
+		$this->connect();
+		$this->add_google_response(
+			'GET',
+			'files',
+			200,
+			array(
+				'files'         => array(
+					array(
+						'id'   => 'file1',
+						'name' => 'first.pdf',
+					),
+				),
+				'nextPageToken' => 'same-token',
+			)
+		);
+		$client  = ( new \ExternalFilesFromGoogleDrive\GoogleDrive\Client( $this->get_google_drive()->get_access_token() ) )->get_client();
+		$service = new \ExternalFilesFromGoogleDrive\Dependencies\Google\Service\Drive( $client );
+
+		$files = $this->get_google_drive()->get_all_files( $service, array( 'pageSize' => 1000 ) );
+
+		$this->assertCount( 2, $files );
+		$this->assertCount( 2, $this->get_google_requests() );
+	}
+
+	/**
+	 * Test the help for the setup.
+	 *
+	 * @return void
+	 */
+	public function test_setup_guide(): void {
+		$service = \ExternalFilesFromGoogleDrive\GoogleDrive::get_instance();
+		$guide   = $service->get_setup_guide();
+		$this->assertNotEmpty( $guide['intro'] );
+		$this->assertNotEmpty( $guide['links'] );
+		if ( method_exists( $service, 'get_setup_guide_html' ) ) {
+			$this->assertStringContainsString( 'efml-setup-guide', $service->get_setup_guide_html() );
+		}
+	}
+
+	/**
+	 * Test the dialog to connect Google Drive in the quickstart.
+	 *
+	 * @return void
+	 */
+	public function test_get_setup_connect_dialog(): void {
+		$google_drive = $this->get_google_drive();
+		$this->do_login();
+
+		// test 1: global mode without connection shows the dialog for administrators.
+		$this->set_mode( 'global' );
+		delete_option( 'eml_google_drive_access_tokens' );
+		$dialog = $google_drive->get_setup_connect_dialog();
+		$this->assertNotEmpty( $dialog );
+		$this->assertStringContainsString( 'eml_google_drive_init', $dialog['buttons'][0]['action'] );
+
+		// test 2: not for users, which are not allowed to change the connection of the website.
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'editor' ) ) );
+		$this->assertEmpty( $google_drive->get_setup_connect_dialog() );
+		$this->do_login();
+
+		// test 3: not if Google Drive is connected.
+		$this->connect();
+		$this->assertEmpty( $google_drive->get_setup_connect_dialog() );
+		delete_option( 'eml_google_drive_access_tokens' );
+
+		// test 4: not if the access token is entered manually.
+		$this->set_mode( 'manually' );
+		$this->assertEmpty( $google_drive->get_setup_connect_dialog() );
+
+		// test 5: in user mode for each user without connection.
+		$this->set_mode( 'user' );
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'editor' ) ) );
+		$this->assertNotEmpty( $google_drive->get_setup_connect_dialog() );
+		$this->do_login();
+
+		// test 6: the own OAuth client needs its credentials.
+		$this->set_mode( 'direct_input' );
+		$this->assertEmpty( $google_drive->get_setup_connect_dialog() );
+		update_option( 'eml_google_drive_credential_client_id', $google_drive->encrypt_value( 'my-client-id' ) );
+		update_option( 'eml_google_drive_credential_client_secret', $google_drive->encrypt_value( 'my-client-secret' ) );
+		$this->assertNotEmpty( $google_drive->get_setup_connect_dialog() );
+		delete_option( 'eml_google_drive_credential_client_id' );
+		delete_option( 'eml_google_drive_credential_client_secret' );
+		$this->set_mode( 'global' );
+	}
+
+	/**
+	 * Test the URL, to which the user is forwarded after connecting Google Drive.
+	 *
+	 * @return void
+	 */
+	public function test_url_after_connection(): void {
+		$google_drive = $this->get_google_drive();
+		$this->do_login();
+		$this->set_mode( 'global' );
+
+		// without the quickstart the configuration is used.
+		$url = $this->call_method( $google_drive, 'get_url_after_connection' );
+		$this->assertEquals( $this->call_method( $google_drive, 'get_config_url' ), $url );
+
+		// bail if the main plugin does not know the quickstart.
+		if ( ! class_exists( '\ExternalFilesInMediaLibrary\Plugin\Setup' ) ) {
+			return;
+		}
+
+		// after starting the connection in the quickstart, the quickstart is continued.
+		update_user_meta(
+			get_current_user_id(),
+			\ExternalFilesInMediaLibrary\Plugin\Setup::OAUTH_RETURN_META,
+			array(
+				'service' => $google_drive->get_name(),
+				'time'    => time(),
+			)
+		);
+		$url = $this->call_method( $google_drive, 'get_url_after_connection' );
+		$this->assertStringContainsString( \ExternalFilesInMediaLibrary\Plugin\Setup::CONTINUE_PARAMETER . '=1', $url );
+	}
+
+	/**
+	 * Test that only users with the capabilities could connect Google Drive, and the connection for the whole
+	 * website only with the capability for the settings.
+	 *
+	 * @return void
+	 */
+	public function test_connection_change_requires_capability(): void {
+		$google_drive = $this->get_google_drive();
+
+		// a subscriber is not allowed.
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'subscriber' ) ) );
+		$this->assertFalse( $this->call_method( $google_drive, 'is_connection_change_allowed' ) );
+
+		// a user with the capabilities for external files and Google Drive is allowed to change their own connection.
+		$user_id = self::factory()->user->create( array( 'role' => 'editor' ) );
+		$user    = get_user_by( 'id', $user_id );
+		$user->add_cap( EFML_CAP_NAME );
+		$user->add_cap( 'efml_cap_' . $google_drive->get_name() );
+		wp_set_current_user( $user_id );
+		update_option( 'eml_' . $google_drive->get_name() . '_credentials_vault', 'user' );
+		$this->assertTrue( $this->call_method( $google_drive, 'is_connection_change_allowed' ) );
+
+		// but not the connection for the whole website.
+		update_option( 'eml_' . $google_drive->get_name() . '_credentials_vault', 'global' );
+		$this->assertFalse( $this->call_method( $google_drive, 'is_connection_change_allowed' ) );
+
+		update_option( 'eml_' . $google_drive->get_name() . '_credentials_vault', 'manually' );
+	}
+
+	/**
+	 * Test that the response of Google is only accepted, if the actual user has started the connection shortly before.
+	 *
+	 * @return void
+	 */
+	public function test_connection_must_be_started_by_user(): void {
+		$google_drive = $this->get_google_drive();
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
+
+		// not started.
+		$this->assertFalse( $this->call_method( $google_drive, 'is_connection_started_by_user' ) );
+
+		// started now.
+		update_user_meta( get_current_user_id(), 'efml_google_drive_oauth_started', time() );
+		$this->assertTrue( $this->call_method( $google_drive, 'is_connection_started_by_user' ) );
+
+		// started too long ago.
+		update_user_meta( get_current_user_id(), 'efml_google_drive_oauth_started', time() - HOUR_IN_SECONDS );
+		$this->assertFalse( $this->call_method( $google_drive, 'is_connection_started_by_user' ) );
 	}
 }

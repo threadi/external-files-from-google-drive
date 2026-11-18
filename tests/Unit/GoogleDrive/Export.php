@@ -38,7 +38,18 @@ class Export extends externalFilesFromGoogleDriveTests {
 	 */
 	private function add_upload_responses( int $status = 200 ): void {
 		$this->add_google_response( 'POST', $this->upload_url, 200, '', array( 'uploadType' => 'resumable' ), array( 'Location' => $this->upload_url . '?uploadType=resumable&upload_id=upload123' ) );
-		$this->add_google_response( 'PUT', $this->upload_url, $status, 200 === $status ? array( 'id' => 'new123' ) : array( 'error' => array( 'code' => $status, 'message' => 'Error' ) ), array( 'upload_id' => 'upload123' ) );
+		$this->add_google_response(
+			'PUT',
+			$this->upload_url,
+			$status,
+			200 === $status ? array( 'id' => 'new123' ) : array(
+				'error' => array(
+					'code'    => $status,
+					'message' => 'Error',
+				),
+			),
+			array( 'upload_id' => 'upload123' )
+		);
 	}
 
 	/**
@@ -117,7 +128,18 @@ class Export extends externalFilesFromGoogleDriveTests {
 	public function test_export_file_without_upload_url(): void {
 		$this->connect();
 		$attachment_id = $this->create_local_attachment();
-		$this->add_google_response( 'POST', $this->upload_url, 401, array( 'error' => array( 'code' => 401, 'message' => 'Unauthorized' ) ), array( 'uploadType' => 'resumable' ) );
+		$this->add_google_response(
+			'POST',
+			$this->upload_url,
+			401,
+			array(
+				'error' => array(
+					'code'    => 401,
+					'message' => 'Unauthorized',
+				),
+			),
+			array( 'uploadType' => 'resumable' )
+		);
 
 		$this->assertFalse( $this->get_export()->export_file( $attachment_id, 'https://drive.google.com/drive/', array() ) );
 		$this->assertStringContainsString( 'File could not be uploaded to Google Drive', $this->get_log_entries( 'https://drive.google.com/drive/' )[0]['log'] );
@@ -174,12 +196,166 @@ class Export extends externalFilesFromGoogleDriveTests {
 
 		// test 2: Google Drive returns an error.
 		update_post_meta( $attachment_id, 'efml_google_drive_file_id', 'new123' );
-		$this->add_google_response( 'DELETE', 'files/new123', 404, array( 'error' => array( 'code' => 404, 'message' => 'File not found' ) ) );
+		$this->add_google_response(
+			'DELETE',
+			'files/new123',
+			404,
+			array(
+				'error' => array(
+					'code'    => 404,
+					'message' => 'File not found',
+				),
+			)
+		);
 		$this->assertFalse( $this->get_export()->delete_exported_file( 'https://example.com/file', array(), $attachment_id ) );
 		$this->assertStringContainsString( 'could not be delete', $this->get_log_entries( 'https://example.com/file' )[0]['log'] );
 
 		// test 3: without access token.
 		update_option( 'eml_google_drive_access_tokens', array() );
 		$this->assertFalse( $this->get_export()->delete_exported_file( 'https://example.com/file', array(), $attachment_id ) );
+	}
+
+	/**
+	 * Return the query to search a folder in Google Drive.
+	 *
+	 * @param string $name      The name of the folder.
+	 * @param string $parent_id The ID of the parent folder.
+	 *
+	 * @return string
+	 */
+	private function get_folder_query( string $name, string $parent_id ): string {
+		return "name = '" . $name . "' and mimeType = 'application/vnd.google-apps.folder' and '" . $parent_id . "' in parents and trashed = false";
+	}
+
+	/**
+	 * Test the export of a file into folders: an existing folder is used, a missing folder is created.
+	 *
+	 * @return void
+	 */
+	public function test_export_file_into_folders(): void {
+		$this->connect();
+		$attachment_id = $this->create_local_attachment();
+		$file_name     = basename( (string) get_attached_file( $attachment_id, true ) );
+		$this->assertTrue( $this->get_export()->supports_folders() );
+
+		// the folder "2026" exists in the directory, the folder "11" must be created in it.
+		$this->add_google_response( 'GET', 'files', 200, array( 'files' => array( array( 'id' => 'folder2026' ) ) ), array( 'q' => $this->get_folder_query( '2026', 'folder1' ) ) );
+		$this->add_google_response( 'GET', 'files', 200, array( 'files' => array() ), array( 'q' => $this->get_folder_query( '11', 'folder2026' ) ) );
+		$this->add_google_response( 'POST', 'files', 200, array( 'id' => 'folder11' ) );
+		$this->add_upload_responses();
+
+		$url = $this->get_export()->export_file( $attachment_id, 'folder1/2026/11/' . $file_name, array( 'directory' => 'folder1/' ) );
+		$this->assertEquals( 'https://drive.usercontent.google.com/download?id=new123&export=download', $url );
+
+		// check the requests: search, search, create the folder, the metadata and the content of the file.
+		$requests = $this->get_google_requests();
+		$this->assertCount( 5, $requests );
+		$folder = json_decode( $requests[2]['body'], true );
+		$this->assertEquals( '11', $folder['name'] );
+		$this->assertEquals( 'application/vnd.google-apps.folder', $folder['mimeType'] );
+		$this->assertEquals( array( 'folder2026' ), $folder['parents'] );
+		$metadata = json_decode( $requests[3]['body'], true );
+		$this->assertEquals( $file_name, $metadata['name'] );
+		$this->assertEquals( array( 'folder11' ), $metadata['parents'] );
+	}
+
+	/**
+	 * Test the export of a file into a folder in the root of Google Drive.
+	 *
+	 * @return void
+	 */
+	public function test_export_file_into_folder_in_root(): void {
+		$this->connect();
+		$attachment_id = $this->create_local_attachment();
+		$file_name     = basename( (string) get_attached_file( $attachment_id, true ) );
+		$this->add_google_response( 'GET', 'files', 200, array( 'files' => array( array( 'id' => 'folder2026' ) ) ), array( 'q' => $this->get_folder_query( '2026', 'root' ) ) );
+		$this->add_upload_responses();
+
+		// without directory.
+		$this->assertIsString( $this->get_export()->export_file( $attachment_id, '/2026/' . $file_name, array( 'directory' => '' ) ) );
+		$metadata = json_decode( $this->get_google_requests()[1]['body'], true );
+		$this->assertEquals( array( 'folder2026' ), $metadata['parents'] );
+	}
+
+	/**
+	 * Test the export of a file into the main directory of the directory listing, which is the root of Google Drive.
+	 *
+	 * @return void
+	 */
+	public function test_export_file_into_main_directory(): void {
+		$this->connect();
+		$attachment_id = $this->create_local_attachment();
+		$file_name     = basename( (string) get_attached_file( $attachment_id, true ) );
+		$directory     = \ExternalFilesFromGoogleDrive\GoogleDrive::get_instance()->get_default_directory();
+		$this->add_google_response( 'GET', 'files', 200, array( 'files' => array( array( 'id' => 'folder2026' ) ) ), array( 'q' => $this->get_folder_query( '2026', 'root' ) ) );
+		$this->add_upload_responses();
+
+		// without folder: the file is saved in the root.
+		$this->assertIsString( $this->get_export()->export_file( $attachment_id, trailingslashit( $directory ) . $file_name, array( 'directory' => $directory ) ) );
+		$metadata = json_decode( $this->get_google_requests()[0]['body'], true );
+		$this->assertArrayNotHasKey( 'parents', $metadata );
+
+		// with folder: the folder is searched in the root.
+		$this->assertIsString( $this->get_export()->export_file( $attachment_id, trailingslashit( $directory ) . '2026/' . $file_name, array( 'directory' => $directory ) ) );
+		$metadata = json_decode( $this->get_google_requests()[3]['body'], true );
+		$this->assertEquals( array( 'folder2026' ), $metadata['parents'] );
+	}
+
+	/**
+	 * Test the export of a file, if a folder could not be created.
+	 *
+	 * @return void
+	 */
+	public function test_export_file_into_folder_with_error(): void {
+		$this->connect();
+		$attachment_id = $this->create_local_attachment();
+		$file_name     = basename( (string) get_attached_file( $attachment_id, true ) );
+		$this->add_google_response( 'GET', 'files', 200, array( 'files' => array() ) );
+		$this->add_google_response(
+			'POST',
+			'files',
+			403,
+			array(
+				'error' => array(
+					'code'    => 403,
+					'message' => 'Forbidden',
+				),
+			)
+		);
+
+		$target = 'folder1/2026/' . $file_name;
+		$this->assertFalse( $this->get_export()->export_file( $attachment_id, $target, array( 'directory' => 'folder1/' ) ) );
+		$this->assertCount( 2, $this->get_google_requests() );
+		$this->assertNotEmpty( $this->get_log_entries( $target ) );
+		$this->assertEmpty( get_post_meta( $attachment_id, 'efml_google_drive_file_id', true ) );
+	}
+
+	/**
+	 * Test the support of private files, which requires a global access token.
+	 *
+	 * @return void
+	 */
+	public function test_supports_private_files(): void {
+		$this->set_mode( 'global' );
+		$this->assertTrue( $this->get_export()->supports_private_files() );
+		$this->set_mode( 'user' );
+		$this->assertFalse( $this->get_export()->supports_private_files() );
+	}
+
+	/**
+	 * Test the export of a private file.
+	 *
+	 * @return void
+	 */
+	public function test_export_private_file(): void {
+		$this->connect();
+		$attachment_id = $this->create_local_attachment();
+		$this->add_upload_responses();
+
+		$url = $this->get_export()->export_file( $attachment_id, 'https://drive.google.com/drive/', array( 'private' => true ) );
+
+		// the internal URL is used.
+		$this->assertEquals( 'https://drive.google.com/drive/new123', $url );
+		$this->assertEquals( 'new123', get_post_meta( $attachment_id, 'efml_google_drive_file_id', true ) );
 	}
 }

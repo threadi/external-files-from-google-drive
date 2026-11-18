@@ -80,7 +80,7 @@ class Cli {
 
 			// get the files.
 			try {
-				$results = $service->files->listFiles( $query );
+				$files = GoogleDrive::get_instance()->get_all_files( $service, $query );
 			} catch ( Exception $e ) {
 				// log event.
 				/* translators: %1$s will be replaced by the username. */
@@ -89,9 +89,6 @@ class Cli {
 				// do not continue with this user.
 				continue;
 			}
-
-			// get list of files.
-			$files = $results->getFiles();
 
 			// show hint if no files could be loaded.
 			if ( empty( $files ) ) {

@@ -13,7 +13,6 @@ defined( 'ABSPATH' ) || exit;
 use easyDirectoryListingForWordPress\Init;
 use easySettingsForWordPress\Fields\Button;
 use easySettingsForWordPress\Fields\Checkbox;
-use easySettingsForWordPress\Fields\Number;
 use easySettingsForWordPress\Fields\Password;
 use easySettingsForWordPress\Fields\Text;
 use easySettingsForWordPress\Fields\TextInfo;
@@ -45,11 +44,89 @@ use WP_User;
  */
 class GoogleDrive extends Service_Base implements Service {
 	/**
+	 * List of the callbacks to encrypt and decrypt settings with their context.
+	 *
+	 * @var array<string,callable>
+	 */
+	private array $crypt_callbacks = array();
+
+	/**
+	 * Return whether the user settings of this service are encrypted with a context.
+	 *
+	 * The main plugin saves the user settings with the context "usermeta:efml_<name>", if this returns true.
+	 *
+	 * @return bool
+	 */
+	public function is_crypt_context_supported(): bool {
+		return true;
+	}
+
+	/**
+	 * Return the callback to encrypt ("save") or decrypt ("read") a setting with its context.
+	 *
+	 * Values saved without context (by older versions) stay readable. With a main plugin, which does not
+	 * support contexts, the callbacks without context are used.
+	 *
+	 * @param string $type    The type: "save" or "read".
+	 * @param string $context The context, e.g. "option:" and the name of the option.
+	 *
+	 * @return callable
+	 */
+	protected function get_crypt_callback( string $type, string $context ): callable {
+		// return the callback, if it has been created before (the same object is needed for has_filter()).
+		$key = $type . ':' . $context;
+		if ( isset( $this->crypt_callbacks[ $key ] ) ) {
+			return $this->crypt_callbacks[ $key ];
+		}
+
+		// get the crypt object.
+		$crypt_obj = Crypt::get_instance();
+
+		// create the callback.
+		if ( 'save' === $type ) {
+			$callback = method_exists( $crypt_obj, 'get_save_callback' ) ? $crypt_obj->get_save_callback( $context ) : array( $this, 'encrypt_value' );
+		} else {
+			$callback = method_exists( $crypt_obj, 'get_read_callback' ) ? $crypt_obj->get_read_callback( $context ) : array( $this, 'decrypt_value' );
+		}
+
+		// remember and return it.
+		$this->crypt_callbacks[ $key ] = $callback;
+		return $callback;
+	}
+
+	/**
+	 * The ID of the test file of the connection test.
+	 *
+	 * @var string
+	 */
+	private string $connection_test_file_id = '';
+
+	/**
 	 * The object name.
 	 *
 	 * @var string
 	 */
 	protected string $name = 'google-drive';
+
+	/**
+	 * Name of the user meta, which marks the start of a connection by the user (time of the start).
+	 */
+	private const OAUTH_STARTED_META = 'efml_google_drive_oauth_started';
+
+	/**
+	 * Maximum time between the start of a connection and the return from Google (in seconds).
+	 */
+	private const OAUTH_MAX_DURATION = 30 * MINUTE_IN_SECONDS;
+
+	/**
+	 * Marker whether the values of the constants are values of the fields of this service.
+	 *
+	 * Disabled, as only the API credentials for the direct input could be defined via constants, which are no fields.
+	 * Requires "External Files in Media Library" 6.0.0 or newer.
+	 *
+	 * @var bool
+	 */
+	protected bool $constants_in_fields = false;
 
 	/**
 	 * The public label.
@@ -123,8 +200,16 @@ class GoogleDrive extends Service_Base implements Service {
 		// add settings.
 		add_action( 'init', array( $this, 'init_google_drive' ), 30 );
 
+		// use the protocol in each request, e.g. for private files via the proxy and for exports of uploads by users
+		// without the capability for this service. Only if the main plugin checks the capability for imports via the
+		// protocol (External Files in Media Library 6.0.0 or newer), otherwise only for users with the capability.
+		$protocol_in_each_request = method_exists( '\ExternalFilesInMediaLibrary\ExternalFiles\Protocol_Base', 'is_import_allowed_for_user' );
+		if ( $protocol_in_each_request ) {
+			add_filter( 'efml_protocols', array( $this, 'add_protocol' ) );
+		}
+
 		// bail if user has no capability for this service.
-		if ( ! defined( 'EFML_SYNC_RUNNING' ) && ! current_user_can( 'efml_cap_' . $this->get_name() ) ) {
+		if ( ! $this->is_import_allowed() ) {
 			return;
 		}
 
@@ -138,8 +223,12 @@ class GoogleDrive extends Service_Base implements Service {
 		add_filter( 'template_include', array( $this, 'check_for_oauth_return_url' ), 10, 1 );
 		add_action( 'show_user_profile', array( $this, 'add_user_settings' ) );
 
+		// use the protocol for users with the capability, if the main plugin does not check it for imports.
+		if ( ! $protocol_in_each_request ) {
+			add_filter( 'efml_protocols', array( $this, 'add_protocol' ) );
+		}
+
 		// use our own hooks.
-		add_filter( 'efml_protocols', array( $this, 'add_protocol' ) );
 		add_filter( 'efml_prevent_import', array( $this, 'check_url' ), 10, 2 );
 		add_filter( 'efmlgd_google_drive_query_params', array( $this, 'set_query_params' ) );
 		add_filter( 'efmlgd_google_drive_hide_file', array( $this, 'prevent_not_allowed_files' ), 10, 3 );
@@ -288,32 +377,48 @@ class GoogleDrive extends Service_Base implements Service {
 				$description = '<strong>' . __( 'You need an SSL-certificate for your public domain to use this method. Local domains are not allowed by Google.', 'external-files-from-google-drive' ) . '</strong>';
 			}
 
-			// add setting for the client ID.
-			$setting = $settings_obj->add_setting( 'eml_google_drive_credential_client_id' );
-			$setting->set_section( $section );
-			$setting->set_show_in_rest( false );
-			$setting->prevent_export( true );
-			$setting->set_read_callback( array( $this, 'decrypt_value' ) );
-			$setting->set_save_callback( array( $this, 'encrypt_value' ) );
-			$field = new Text( $settings_obj );
-			$field->set_title( __( 'Client ID', 'external-files-from-google-drive' ) );
-			$field->set_description( $description );
-			$field->set_placeholder( 'xy-apps.googleusercontent.com' );
-			$field->set_readonly( ! $this->is_direct_input_available() );
-			$setting->set_field( $field );
+			// show hint if the value is defined via constant, otherwise the setting.
+			if ( $this->show_constant_hint( $section, 'client_id', __( 'Client ID', 'external-files-from-google-drive' ) ) ) {
+				// show the redirect URL, which must be set in the OAuth client.
+				$setting = $settings_obj->add_setting( 'eml_google_drive_credential_redirect_hint' );
+				$setting->set_section( $section );
+				$setting->set_show_in_rest( false );
+				$setting->prevent_export( true );
+				$field = new TextInfo( $settings_obj );
+				$field->set_title( __( 'Redirect URL', 'external-files-from-google-drive' ) );
+				$field->set_description( ! $this->is_direct_input_available() ? $description : __( 'Enter the following as the redirect URL in the OAuth 2.0 client of your Google Cloud project:', 'external-files-from-google-drive' ) . ' <code class="copy-text-attr" data-text="' . esc_attr( $this->get_real_redirect_uri() ) . '" data-copied-label="' . esc_attr__( 'Copied', 'external-files-from-google-drive' ) . '">' . esc_html( $this->get_real_redirect_uri() ) . '</code>' );
+				$setting->set_field( $field );
+			} else {
+				// add setting for the client ID.
+				$setting = $settings_obj->add_setting( 'eml_google_drive_credential_client_id' );
+				$setting->set_section( $section );
+				$setting->set_show_in_rest( false );
+				$setting->prevent_export( true );
+				$setting->set_read_callback( $this->get_crypt_callback( 'read', 'option:eml_google_drive_credential_client_id' ) );
+				$setting->set_save_callback( $this->get_crypt_callback( 'save', 'option:eml_google_drive_credential_client_id' ) );
+				$field = new Text( $settings_obj );
+				$field->set_title( __( 'Client ID', 'external-files-from-google-drive' ) );
+				$field->set_description( $description );
+				$field->set_placeholder( 'xy-apps.googleusercontent.com' );
+				$field->set_readonly( ! $this->is_direct_input_available() );
+				$setting->set_field( $field );
+			}
 
-			// add setting for the client secret.
-			$setting = $settings_obj->add_setting( 'eml_google_drive_credential_client_secret' );
-			$setting->set_section( $section );
-			$setting->set_show_in_rest( false );
-			$setting->prevent_export( true );
-			$setting->set_read_callback( array( $this, 'decrypt_value' ) );
-			$setting->set_save_callback( array( $this, 'encrypt_value' ) );
-			$field = new Password( $settings_obj );
-			$field->set_title( __( 'Client Secret', 'external-files-from-google-drive' ) );
-			$field->set_placeholder( 'AbCdEfG' );
-			$field->set_readonly( ! $this->is_direct_input_available() );
-			$setting->set_field( $field );
+			// show hint if the value is defined via constant, otherwise the setting.
+			if ( ! $this->show_constant_hint( $section, 'client_secret', __( 'Client Secret', 'external-files-from-google-drive' ) ) ) {
+				// add setting for the client secret.
+				$setting = $settings_obj->add_setting( 'eml_google_drive_credential_client_secret' );
+				$setting->set_section( $section );
+				$setting->set_show_in_rest( false );
+				$setting->prevent_export( true );
+				$setting->set_read_callback( $this->get_crypt_callback( 'read', 'option:eml_google_drive_credential_client_secret' ) );
+				$setting->set_save_callback( $this->get_crypt_callback( 'save', 'option:eml_google_drive_credential_client_secret' ) );
+				$field = new Password( $settings_obj );
+				$field->set_title( __( 'Client Secret', 'external-files-from-google-drive' ) );
+				$field->set_placeholder( 'AbCdEfG' );
+				$field->set_readonly( ! $this->is_direct_input_available() );
+				$setting->set_field( $field );
+			}
 
 			// Connect/Disconnect-Button, wie in den anderen Modi.
 			$setting = $settings_obj->add_setting( 'eml_google_drive_connector' );
@@ -322,8 +427,8 @@ class GoogleDrive extends Service_Base implements Service {
 			$setting->prevent_export( true );
 
 			$access_token         = $this->get_access_token();
-			$custom_client_id     = get_option( 'eml_google_drive_credential_client_id' );
-			$custom_client_secret = get_option( 'eml_google_drive_credential_client_secret' );
+			$custom_client_id     = $this->get_credential( 'eml_google_drive_credential_client_id' );
+			$custom_client_secret = $this->get_credential( 'eml_google_drive_credential_client_secret' );
 
 			$field = new Button( $settings_obj );
 			$field->set_title( __( 'API connection', 'external-files-from-google-drive' ) );
@@ -344,17 +449,6 @@ class GoogleDrive extends Service_Base implements Service {
 			}
 			$setting->set_field( $field );
 		}
-
-		// add setting to show also trashed files.
-		$setting = $settings_obj->add_setting( 'eml_google_drive_limit' );
-		$setting->set_section( $section );
-		$setting->set_type( 'integer' );
-		$setting->set_default( 10 );
-		$field = new Number( $settings_obj );
-		$field->set_title( __( 'Max. files to load per iteration', 'external-files-from-google-drive' ) );
-		$field->set_description( __( 'This value specifies how many files should be loaded during a directory import. The higher the value, the greater the likelihood of timeouts during import.', 'external-files-from-google-drive' ) );
-		$field->set_setting( $setting );
-		$setting->set_field( $field );
 
 		// add invisible setting for global access token.
 		$setting = $settings_obj->add_setting( 'eml_google_drive_access_tokens' );
@@ -402,6 +496,26 @@ class GoogleDrive extends Service_Base implements Service {
 	}
 
 	/**
+	 * Return the name of the main directory, which is used for the root of Google Drive.
+	 *
+	 * @return string
+	 */
+	public function get_default_directory(): string {
+		return $this->default_directory;
+	}
+
+	/**
+	 * Return whether the access token is saved globally (and not per user).
+	 *
+	 * @since 1.4.0 Available since 1.4.0.
+	 *
+	 * @return bool
+	 */
+	public function is_access_token_global(): bool {
+		return $this->is_mode( 'global' ) || $this->is_mode( 'direct_input' );
+	}
+
+	/**
 	 * Return access token depending on the actual mode.
 	 *
 	 * @return array<string,mixed>
@@ -423,7 +537,7 @@ class GoogleDrive extends Service_Base implements Service {
 			}
 
 			// get the value.
-			$access_token_json = Crypt::get_instance()->decrypt( get_user_meta( $user->ID, 'efml_google_drive_access_tokens', true ) );
+			$access_token_json = Crypt::get_instance()->decrypt( (string) get_user_meta( $user->ID, 'efml_google_drive_access_tokens', true ), 'usermeta:efml_google_drive_access_tokens' );
 
 			// bail if string is empty.
 			if ( empty( $access_token_json ) ) {
@@ -496,7 +610,7 @@ class GoogleDrive extends Service_Base implements Service {
 			Log::get_instance()->create( sprintf( __( 'New Google Drive access token saved for user %1$s.', 'external-files-from-google-drive' ), '<em>' . $user->display_name . '</em>' ), '', 'info', 2 );
 
 			// save the token.
-			update_user_meta( $user_id, 'efml_google_drive_access_tokens', Crypt::get_instance()->encrypt( Helper::get_json( $access_token ) ) );
+			update_user_meta( $user_id, 'efml_google_drive_access_tokens', Crypt::get_instance()->encrypt( Helper::get_json( $access_token ), 'usermeta:efml_google_drive_access_tokens' ) );
 		}
 	}
 
@@ -632,6 +746,12 @@ class GoogleDrive extends Service_Base implements Service {
 	 * @return string
 	 */
 	private function get_credential( string $option_name ): string {
+		// use the value of the constant, if set.
+		$constant_value = $this->get_constant_value_if_supported( str_replace( 'eml_google_drive_credential_', '', $option_name ) );
+		if ( ! is_null( $constant_value ) ) {
+			return $constant_value;
+		}
+
 		// get the value.
 		$value = get_option( $option_name );
 
@@ -641,12 +761,12 @@ class GoogleDrive extends Service_Base implements Service {
 		}
 
 		// bail if the value is already decrypted during reading.
-		if ( false !== has_filter( 'option_' . $option_name, array( $this, 'decrypt_value' ) ) ) {
+		if ( false !== has_filter( 'option_' . $option_name, $this->get_crypt_callback( 'read', 'option:' . $option_name ) ) ) {
 			return $value;
 		}
 
 		// return the decrypted value.
-		return $this->decrypt_value( $value );
+		return call_user_func( $this->get_crypt_callback( 'read', 'option:' . $option_name ), $value );
 	}
 
 	/**
@@ -741,6 +861,14 @@ class GoogleDrive extends Service_Base implements Service {
 		// check nonce.
 		check_admin_referer( 'eml-google-drive-initiate', 'nonce' );
 
+		// bail if the actual user is not allowed to change the connection.
+		if ( ! $this->is_connection_change_allowed() ) {
+			wp_die( esc_html__( 'You are not allowed to connect Google Drive.', 'external-files-from-google-drive' ) );
+		}
+
+		// remember the start of the connection by this user: only then the response of Google is accepted.
+		update_user_meta( get_current_user_id(), self::OAUTH_STARTED_META, time() );
+
 		// set params for OAuth2-Request to get access to Google Drive.
 		$params = array(
 			'response_type'           => 'code',
@@ -786,6 +914,11 @@ class GoogleDrive extends Service_Base implements Service {
 		// check nonce.
 		check_admin_referer( 'eml-google-drive-disconnect', 'nonce' );
 
+		// bail if the actual user is not allowed to change the connection.
+		if ( ! $this->is_connection_change_allowed() ) {
+			wp_die( esc_html__( 'You are not allowed to disconnect Google Drive.', 'external-files-from-google-drive' ) );
+		}
+
 		// delete the token.
 		$this->delete_access_token();
 
@@ -812,6 +945,41 @@ class GoogleDrive extends Service_Base implements Service {
 	}
 
 	/**
+	 * Return whether the actual user is allowed to connect or disconnect Google Drive in the actual mode.
+	 *
+	 * The connection for the whole website could only be changed by users, who are allowed to manage the settings.
+	 *
+	 * @return bool
+	 */
+	private function is_connection_change_allowed(): bool {
+		// bail if the user is not allowed to use this service.
+		if ( ! is_user_logged_in() || ! current_user_can( EFML_CAP_NAME ) || ! current_user_can( 'efml_cap_' . $this->get_name() ) ) {
+			return false;
+		}
+
+		// the connection for the whole website.
+		if ( $this->is_mode( 'global' ) || $this->is_mode( 'direct_input' ) ) {
+			return current_user_can( 'manage_options' );
+		}
+
+		// return true as the user changes their own connection.
+		return true;
+	}
+
+	/**
+	 * Return whether the actual user has started a connection to Google Drive in the last 30 minutes.
+	 *
+	 * @return bool
+	 */
+	private function is_connection_started_by_user(): bool {
+		// get the time of the start.
+		$started = absint( get_user_meta( get_current_user_id(), self::OAUTH_STARTED_META, true ) );
+
+		// return whether it has been started in time.
+		return $started > 0 && ( time() - $started ) <= self::OAUTH_MAX_DURATION;
+	}
+
+	/**
 	 * Check for requested OAuth return URL.
 	 *
 	 * @param string $template The requested template.
@@ -824,6 +992,15 @@ class GoogleDrive extends Service_Base implements Service {
 		if ( empty( get_query_var( $this->get_oauth_slug() ) ) ) {
 			return $template;
 		}
+
+		// bail if the response does not belong to a connection, which the actual user has started and is allowed to.
+		if ( ! $this->is_connection_change_allowed() || ! $this->is_connection_started_by_user() ) {
+			Log::get_instance()->create( __( 'The response from Google OAuth does not match a connection started by this user and has been ignored.', 'external-files-from-google-drive' ), '', 'error' );
+			return Helper::get_404_template();
+		}
+
+		// the start of the connection must only be usable once.
+		delete_user_meta( get_current_user_id(), self::OAUTH_STARTED_META );
 
 		// if direct input is used, get the codes from the request.
 		if ( $this->is_mode( 'direct_input' ) ) {
@@ -868,8 +1045,8 @@ class GoogleDrive extends Service_Base implements Service {
 			// set the token.
 			$this->set_access_token( $access_token );
 
-			// redirect to the config URL.
-			wp_safe_redirect( $this->get_config_url() );
+			// redirect to the config URL or back to the quickstart.
+			wp_safe_redirect( $this->get_url_after_connection() );
 			exit;
 		}
 
@@ -905,9 +1082,56 @@ class GoogleDrive extends Service_Base implements Service {
 		// save the token.
 		$this->set_access_token( $access_token );
 
-		// forward user.
-		wp_safe_redirect( $this->get_config_url() );
+		// forward user to the config URL or back to the quickstart.
+		wp_safe_redirect( $this->get_url_after_connection() );
 		exit;
+	}
+
+	/**
+	 * Return all files for the given query, also if Google Drive returns them in multiple parts.
+	 *
+	 * Google Drive returns at most 1000 files per request (the value of "pageSize"). The following parts are
+	 * loaded with the token of the previous part until the list is complete.
+	 *
+	 * @since 1.4.0 Available since 1.4.0.
+	 *
+	 * @param Drive               $service The Google Drive service.
+	 * @param array<string,mixed> $query   The query for the list of files.
+	 *
+	 * @return array<int,DriveFile>
+	 * @throws Exception If a request fails.
+	 */
+	public function get_all_files( Drive $service, array $query ): array {
+		// collect the files.
+		$files = array();
+
+		// collect the used tokens to prevent endless loops with faulty responses.
+		$used_tokens = array();
+
+		do {
+			// load the actual part.
+			$results = $service->files->listFiles( $query );
+
+			// add its files to the list.
+			foreach ( $results->getFiles() as $file_obj ) {
+				$files[] = $file_obj;
+			}
+
+			// get the token for the next part.
+			$token = (string) $results->getNextPageToken();
+
+			// bail if this token has been used already.
+			if ( isset( $used_tokens[ $token ] ) ) {
+				break;
+			}
+			$used_tokens[ $token ] = true;
+
+			// use the token for the next part.
+			$query['pageToken'] = $token;
+		} while ( '' !== $token );
+
+		// return the complete list.
+		return $files;
 	}
 
 	/**
@@ -959,9 +1183,9 @@ class GoogleDrive extends Service_Base implements Service {
 		 */
 		$query = apply_filters( 'efmlgd_google_drive_query_params', $query, $directory );
 
-		// get the files.
+		// get the files (all parts of the list).
 		try {
-			$results = $service->files->listFiles( $query );
+			$files = $this->get_all_files( $service, $query );
 		} catch ( Exception $e ) {
 			// log event.
 			Log::get_instance()->create( __( 'List of files could not be loaded from Google Drive. Error:', 'external-files-from-google-drive' ) . ' <code>' . wp_json_encode( $e->getErrors() ) . '</code>', '', 'error' );
@@ -979,13 +1203,6 @@ class GoogleDrive extends Service_Base implements Service {
 			// return an empty list as we could not analyse the file.
 			return array();
 		}
-
-		/**
-		 * Get the list of files from Google Drive.
-		 *
-		 * This will be all files depending on the query.
-		 */
-		$files = $results->getFiles();
 
 		// bail if list is empty.
 		if ( empty( $files ) ) {
@@ -1130,6 +1347,71 @@ class GoogleDrive extends Service_Base implements Service {
 	}
 
 	/**
+	 * Return the URL, to which the user is forwarded after connecting Google Drive.
+	 *
+	 * This is the quickstart, if the connection has been started there, otherwise the configuration (requires
+	 * External Files in Media Library 6.0.0 for the quickstart).
+	 *
+	 * @return string
+	 */
+	private function get_url_after_connection(): string {
+		// use the URL of the main plugin, which knows the quickstart.
+		if ( method_exists( $this, 'get_oauth_return_url' ) ) { // @phpstan-ignore function.alreadyNarrowedType
+			return $this->get_oauth_return_url();
+		}
+
+		// return the config URL otherwise.
+		return $this->get_config_url();
+	}
+
+	/**
+	 * Return the dialog to connect Google Drive, if it must be connected before it could be used in the quickstart
+	 * (requires External Files in Media Library 6.0.0).
+	 *
+	 * Returns an empty array, if Google Drive is already connected, if the access token is entered manually or if
+	 * the actual user is not allowed to connect it.
+	 *
+	 * @since 1.4.0 Available since 1.4.0.
+	 *
+	 * @return array<string,mixed>
+	 */
+	public function get_setup_connect_dialog(): array {
+		// bail if the access token is entered manually.
+		if ( $this->is_mode( 'manually' ) ) {
+			return array();
+		}
+
+		// bail if Google Drive is already connected.
+		if ( ! empty( $this->get_access_token() ) ) {
+			return array();
+		}
+
+		// bail if the connection for the whole website must not be changed by the actual user.
+		if ( $this->is_access_token_global() && ! current_user_can( 'manage_options' ) ) {
+			return array();
+		}
+
+		// bail if the own OAuth client should be used, but its credentials are missing.
+		if ( $this->is_mode( 'direct_input' ) && '' === $this->get_client_secret() ) {
+			return array();
+		}
+
+		// return the dialog to connect.
+		return $this->get_connect_dialog();
+	}
+
+	/**
+	 * Return the URL of the web interface of Google Drive.
+	 *
+	 * @since 1.4.0 Available since 1.4.0.
+	 *
+	 * @return string
+	 */
+	public function get_platform_url(): string {
+		return 'https://drive.google.com/drive/my-drive';
+	}
+
+	/**
 	 * Return global actions.
 	 *
 	 * @return array<int,array<string,string>>
@@ -1141,7 +1423,7 @@ class GoogleDrive extends Service_Base implements Service {
 		// create our custom global actions.
 		$actions = array(
 			array(
-				'action' => 'location.href="https://drive.google.com/drive/my-drive";',
+				'action' => 'location.href="' . esc_url( $this->get_platform_url() ) . '";',
 				'label'  => __( 'Go to Google Drive', 'external-files-from-google-drive' ),
 			),
 			array(
@@ -1259,12 +1541,12 @@ class GoogleDrive extends Service_Base implements Service {
 			}
 
 			// do not query for trashed files.
-			if ( 1 !== absint( Crypt::get_instance()->decrypt( (string) get_user_meta( $user->ID, 'efml_google_drive_show_trashed', true ) ) ) ) {
+			if ( 1 !== absint( Crypt::get_instance()->decrypt( (string) get_user_meta( $user->ID, 'efml_google_drive_show_trashed', true ), 'usermeta:efml_google_drive_show_trashed' ) ) ) {
 				$q[] = 'trashed = false';
 			}
 
 			// do only query for my own files, not shared files.
-			if ( 1 !== absint( Crypt::get_instance()->decrypt( (string) get_user_meta( $user->ID, 'efml_google_drive_show_shared', true ) ) ) ) {
+			if ( 1 !== absint( Crypt::get_instance()->decrypt( (string) get_user_meta( $user->ID, 'efml_google_drive_show_shared', true ), 'usermeta:efml_google_drive_show_shared' ) ) ) {
 				$q[] = "'me' in owners";
 			}
 		}
@@ -1790,6 +2072,9 @@ class GoogleDrive extends Service_Base implements Service {
 	public function uninstall(): void {
 		// TODO delete for all users.
 		$this->delete_access_token();
+
+		// remove the markers of started connections of all users.
+		delete_metadata( 'user', 0, self::OAUTH_STARTED_META, '', true );
 	}
 
 	/**
@@ -1937,6 +2222,84 @@ class GoogleDrive extends Service_Base implements Service {
 	}
 
 	/**
+	 * Return the definitions of the values, which could be defined via constants.
+	 *
+	 * Google Drive is using OAuth, so only the API credentials for the direct input could be defined via constants.
+	 * The tokens are saved in the database, as they will be refreshed regularly.
+	 *
+	 * @return array<string,array<string,mixed>>
+	 */
+	public function get_constant_field_definitions(): array {
+		// bail if this service does not support constants.
+		if ( ! $this->is_fields_via_constants_enabled() ) {
+			return array();
+		}
+
+		// return the definitions.
+		return array(
+			'client_id'     => array(
+				'name'       => 'client_id',
+				'type'       => 'text',
+				'label'      => __( 'Client ID', 'external-files-from-google-drive' ),
+				'credential' => true,
+			),
+			'client_secret' => array(
+				'name'       => 'client_secret',
+				'type'       => 'password',
+				'label'      => __( 'Client Secret', 'external-files-from-google-drive' ),
+				'credential' => true,
+			),
+		);
+	}
+
+	/**
+	 * Return the mode, which is used if the credentials are defined via constants: the direct input of API credentials.
+	 *
+	 * @return string
+	 */
+	protected function get_mode_for_constants(): string {
+		return 'direct_input';
+	}
+
+	/**
+	 * Return the value of a field defined via constant, if the main plugin supports this.
+	 *
+	 * Requires "External Files in Media Library" 6.0.0 or newer.
+	 *
+	 * @param string $field_name The name of the field.
+	 *
+	 * @return string|null
+	 */
+	private function get_constant_value_if_supported( string $field_name ): ?string {
+		// bail if the main plugin does not support constants.
+		if ( ! method_exists( $this, 'get_constant_value' ) ) { // @phpstan-ignore function.alreadyNarrowedType
+			return null;
+		}
+
+		// return the value.
+		return $this->get_constant_value( $field_name );
+	}
+
+	/**
+	 * Show a non-editable hint instead of a setting, if the value of the given field is defined via constant.
+	 *
+	 * @param Section $section    The section for the setting.
+	 * @param string  $field_name The name of the field.
+	 * @param string  $title      The title of the setting.
+	 *
+	 * @return bool True if the hint has been added, false if the setting should be added.
+	 */
+	protected function show_constant_hint( Section $section, string $field_name, string $title ): bool {
+		// bail if the main plugin does not support this (requires "External Files in Media Library" 6.0.0 or newer).
+		if ( ! method_exists( $this, 'add_constant_hint_setting' ) ) { // @phpstan-ignore function.alreadyNarrowedType
+			return false;
+		}
+
+		// add the hint, if the value is defined via constant.
+		return $this->add_constant_hint_setting( $section, $field_name, $title );
+	}
+
+	/**
 	 * The direct input method is only usable under following conditions:
 	 *
 	 * - The project does use a TLD for their domain.
@@ -2001,5 +2364,221 @@ class GoogleDrive extends Service_Base implements Service {
 
 		// otherwise use the global configuration URL.
 		return parent::get_config_url();
+	}
+
+	/**
+	 * Return whether this service supports the complete connection test (requires External Files in Media Library 6.0.0).
+	 *
+	 * @since 1.4.0 Available since 1.4.0.
+	 *
+	 * @return bool
+	 */
+	public function supports_connection_test(): bool {
+		return true;
+	}
+
+	/**
+	 * Return the Google Drive service object for the connection test.
+	 *
+	 * @return Drive
+	 * @throws \Exception If no client could be loaded (e.g. without access token).
+	 */
+	private function get_connection_test_service(): Drive {
+		// get the client.
+		$client = ( new Client( $this->get_access_token() ) )->get_client();
+
+		// bail if no client could be loaded.
+		if ( ! $client instanceof \ExternalFilesFromGoogleDrive\Dependencies\Google\Client ) {
+			throw new \Exception( esc_html__( 'Your website is not connected with Google Drive. Connect it in the settings first.', 'external-files-from-google-drive' ) );
+		}
+
+		// return the service object.
+		return new Drive( $client );
+	}
+
+	/**
+	 * Return the ID of the folder for the connection test, empty for the main folder.
+	 *
+	 * @return string
+	 */
+	private function get_connection_test_folder_id(): string {
+		// get the directory.
+		$directory = $this->get_connection_test_directory();
+
+		// return nothing for the main folder.
+		if ( '' === $directory || $this->get_default_directory() === $directory ) {
+			return '';
+		}
+
+		// return the ID like the export uses it.
+		return str_replace( '/', '', $directory );
+	}
+
+	/**
+	 * Log the given exception of the connection test and return a new exception with a short message.
+	 *
+	 * @param \Exception $e       The exception.
+	 * @param string     $message The short message.
+	 *
+	 * @return \Exception
+	 */
+	private function get_connection_test_exception( \Exception $e, string $message ): \Exception {
+		// log the details.
+		Log::get_instance()->create( esc_html( $message ) . ' <code>' . esc_html( $e->getMessage() ) . '</code>', $this->get_url_mark(), 'error' );
+
+		// return the exception with the short message.
+		return new \Exception( $message . ' ' . __( 'Check the log for details.', 'external-files-from-google-drive' ) );
+	}
+
+	/**
+	 * List the folder in Google Drive for the connection test.
+	 *
+	 * @since 1.4.0 Available since 1.4.0.
+	 *
+	 * @return string
+	 * @throws \Exception If the step failed.
+	 */
+	protected function test_connection_list(): string {
+		// get the service.
+		$service = $this->get_connection_test_service();
+
+		// create the query for one file of the folder.
+		$query = array(
+			'pageSize' => 1,
+			'fields'   => 'files(id)',
+		);
+		if ( '' !== $this->get_connection_test_folder_id() ) {
+			$query['q'] = "'" . $this->get_connection_test_folder_id() . "' in parents";
+		}
+
+		// list the folder.
+		try {
+			$service->files->listFiles( $query );
+		} catch ( \Exception $e ) {
+			throw $this->get_connection_test_exception( $e, __( 'The folder could not be read in Google Drive.', 'external-files-from-google-drive' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
+		}
+
+		// return the message.
+		return __( 'The folder could be read.', 'external-files-from-google-drive' );
+	}
+
+	/**
+	 * Upload the test file to Google Drive.
+	 *
+	 * @since 1.4.0 Available since 1.4.0.
+	 *
+	 * @param string $local_file The absolute path to the local test file.
+	 * @param string $file_name  The name of the test file.
+	 *
+	 * @return string
+	 * @throws \Exception If the step failed.
+	 */
+	protected function test_connection_upload( string $local_file, string $file_name ): string {
+		// get the service.
+		$service = $this->get_connection_test_service();
+
+		// set the metadata of the file.
+		$metadata = array(
+			'name' => $file_name,
+		);
+		if ( '' !== $this->get_connection_test_folder_id() ) {
+			$metadata['parents'] = array( $this->get_connection_test_folder_id() );
+		}
+
+		// upload the file.
+		try {
+			$result = $service->files->create(
+				new DriveFile( $metadata ),
+				array(
+					'data'       => (string) Helper::get_wp_filesystem()->get_contents( $local_file ),
+					'mimeType'   => 'text/plain',
+					'uploadType' => 'multipart',
+					'fields'     => 'id',
+				)
+			);
+		} catch ( \Exception $e ) {
+			throw $this->get_connection_test_exception( $e, __( 'The test file could not be uploaded to Google Drive.', 'external-files-from-google-drive' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
+		}
+
+		// save the ID for the next steps.
+		$this->connection_test_file_id = (string) $result->getId();
+
+		// return the internal URL of the file.
+		return $this->get_url_mark() . $this->connection_test_file_id;
+	}
+
+	/**
+	 * Return whether the test file is public available.
+	 *
+	 * @since 1.4.0 Available since 1.4.0.
+	 *
+	 * @param string $url The URL of the uploaded file.
+	 *
+	 * @return bool|null
+	 */
+	protected function test_connection_public( string $url ): ?bool {
+		try {
+			return $this->is_file_public( new DriveFile( array( 'id' => $this->connection_test_file_id ) ), $this->get_connection_test_service() );
+		} catch ( \Exception $e ) {
+			return false;
+		}
+	}
+
+	/**
+	 * Delete the test file in Google Drive.
+	 *
+	 * @since 1.4.0 Available since 1.4.0.
+	 *
+	 * @param string $url       The URL of the uploaded file.
+	 * @param string $file_name The name of the test file.
+	 *
+	 * @return void
+	 * @throws \Exception If the step failed.
+	 */
+	protected function test_connection_delete( string $url, string $file_name ): void {
+		try {
+			$this->get_connection_test_service()->files->delete( $this->connection_test_file_id );
+		} catch ( \Exception $e ) {
+			throw $this->get_connection_test_exception( $e, __( 'The test file could not be deleted in Google Drive.', 'external-files-from-google-drive' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
+		}
+	}
+
+	/**
+	 * Return further search terms of this service, separated by commas (e.g. for the command palette).
+	 *
+	 * Requires "External Files in Media Library" 6.0.0 or newer.
+	 *
+	 * @return string
+	 */
+	protected function get_keywords(): string {
+		return 'Google, Google Drive, cloud';
+	}
+
+	/**
+	 * Return the help for the setup of this service.
+	 *
+	 * @return array{intro?: string, steps?: array<int,string>, hints?: array<int,string>, code?: array{label: string, content: string, hint?: string}, links?: array<int,array{label: string, url: string}>}
+	 */
+	public function get_setup_guide(): array {
+		return array(
+			'intro' => __( 'You do not need to enter access data for Google Drive: connect it via the button, sign in with your Google account and allow the access to your files.', 'external-files-from-google-drive' ),
+			'steps' => array(
+				__( 'Use the Google account, whose files you would like to use.', 'external-files-from-google-drive' ),
+				__( 'To use only a folder, enter its ID. You find it in the address of the folder in your browser, after <code>/folders/</code>.', 'external-files-from-google-drive' ),
+			),
+			'hints' => array(
+				__( 'Alternatively you can use your own OAuth client of a Google Cloud project with enabled Google Drive API (type "Web application"). Enter its client ID and client secret in the settings and add the redirect URL shown there to the client.', 'external-files-from-google-drive' ),
+			),
+			'links' => array(
+				array(
+					'label' => __( 'Google Cloud console', 'external-files-from-google-drive' ),
+					'url'   => 'https://console.cloud.google.com/apis/credentials',
+				),
+				array(
+					'label' => __( 'OAuth 2.0 for web server applications', 'external-files-from-google-drive' ),
+					'url'   => 'https://developers.google.com/identity/protocols/oauth2/web-server',
+				),
+			),
+		);
 	}
 }

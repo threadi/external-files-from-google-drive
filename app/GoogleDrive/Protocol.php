@@ -12,17 +12,19 @@ defined( 'ABSPATH' ) || exit;
 
 use Error;
 use ExternalFilesFromGoogleDrive\GoogleDrive;
+use ExternalFilesInMediaLibrary\ExternalFiles\File;
 use ExternalFilesInMediaLibrary\ExternalFiles\Files;
 use ExternalFilesInMediaLibrary\ExternalFiles\Import;
 use ExternalFilesInMediaLibrary\ExternalFiles\Protocol_Base;
+use ExternalFilesInMediaLibrary\ExternalFiles\Protocols\Http;
 use ExternalFilesInMediaLibrary\ExternalFiles\Results;
 use ExternalFilesInMediaLibrary\ExternalFiles\Results\Url_Result;
 use ExternalFilesInMediaLibrary\Plugin\Helper;
 use ExternalFilesInMediaLibrary\Plugin\Log;
 use ExternalFilesFromGoogleDrive\Dependencies\Google\Service\Drive;
-use ExternalFilesFromGoogleDrive\Dependencies\Google\Service\Drive\DriveFile;
 use ExternalFilesFromGoogleDrive\Dependencies\Google\Service\Exception;
 use JsonException;
+use WP_Filesystem_Base;
 
 /**
  * Object to handle different protocols.
@@ -34,6 +36,27 @@ class Protocol extends Protocol_Base {
 	 * @var string
 	 */
 	protected string $name = 'google-drive';
+
+	/**
+	 * Return whether files could be imported from Google Drive in the actual request.
+	 *
+	 * The protocol is also registered for visitors (e.g. to deliver private files via the proxy), but only users
+	 * with the capability for Google Drive are allowed to import files (as well as cron and WP CLI).
+	 *
+	 * @since 1.4.0 Available since 1.4.0.
+	 *
+	 * @return bool
+	 */
+	public function is_import_allowed_for_user(): bool {
+		// use the check of the service, if it is available (External Files in Media Library 6.0.0 or newer).
+		$service_obj = GoogleDrive::get_instance();
+		if ( method_exists( $service_obj, 'is_import_permitted' ) ) {
+			return $service_obj->is_import_permitted();
+		}
+
+		// otherwise check the capability for the service.
+		return defined( 'EFML_SYNC_RUNNING' ) || wp_doing_cron() || Helper::is_cli() || current_user_can( 'efml_cap_' . $service_obj->get_name() );
+	}
 
 	/**
 	 * Return whether the file using this protocol is available.
@@ -181,9 +204,6 @@ class Protocol extends Protocol_Base {
 					 */
 					do_action( 'efml_google_drive_directory_import_file_check', $directory );
 
-					// set counter for files which has been loaded from Google Drive.
-					$loaded_files = 0;
-
 					// save count of URLs.
 					update_option( 'eml_import_url_max_' . $user_id, count( $settings['files'] ) );
 
@@ -194,13 +214,6 @@ class Protocol extends Protocol_Base {
 							continue;
 						}
 
-						// bail if limit for loaded files has been reached and this is an AJAX-request.
-						if ( wp_doing_ajax() && $loaded_files >= absint( get_option( 'eml_google_drive_limit', 10 ) ) ) {
-							// set marker to load more.
-							$results['load_more'] = true;
-							continue;
-						}
-
 						// get the file data.
 						$entry = $this->get_file_data( $service, $file['file'] );
 
@@ -208,9 +221,6 @@ class Protocol extends Protocol_Base {
 						if ( empty( $entry ) ) {
 							continue;
 						}
-
-						// update the counter.
-						++$loaded_files;
 
 						// add file to the list.
 						$results[] = $entry;
@@ -253,6 +263,155 @@ class Protocol extends Protocol_Base {
 	 */
 	public function can_change_hosting(): bool {
 		return false;
+	}
+
+	/**
+	 * Return whether this protocol could list the files of a directory page by page.
+	 *
+	 * @return bool
+	 */
+	public function supports_file_list(): bool {
+		return true;
+	}
+
+	/**
+	 * Return the ID of the file or directory in the URL of this object.
+	 *
+	 * @return string
+	 */
+	private function get_file_id(): string {
+		return str_replace( GoogleDrive::get_instance()->get_url_mark(), '', $this->get_url() );
+	}
+
+	/**
+	 * Return whether the URL of this object is a directory or the import of all files.
+	 *
+	 * @return bool
+	 */
+	public function is_directory(): bool {
+		// get the ID.
+		$file_id = $this->get_file_id();
+
+		// return whether all files or a directory should be imported.
+		return 'eflm-import-all' === $file_id || str_ends_with( $file_id, '/' );
+	}
+
+	/**
+	 * Return one page of the files in the requested directory, in the main directory or of all files.
+	 *
+	 * Like the import of a directory: a folder contains only its own files, the main directory all files.
+	 *
+	 * @param string $cursor The cursor for the requested page.
+	 *
+	 * @return array{files: array<int,array{url: string, media-url?: string, filesize?: int, last-modified?: int}>, cursor: string}|false
+	 */
+	public function get_file_list( string $cursor ): array|false {
+		// get the Google Drive object.
+		$google_drive_obj = GoogleDrive::get_instance();
+
+		// get the access token of the actual user.
+		$access_token = $google_drive_obj->get_access_token();
+
+		// bail if no access token is given.
+		if ( empty( $access_token ) ) {
+			Log::get_instance()->create( __( 'Access token missing to connect to Google Drive!', 'external-files-from-google-drive' ), esc_url( $this->get_url() ), 'error', 0, Import::get_instance()->get_identifier() );
+			return false;
+		}
+
+		// get the client.
+		$client = ( new Client( $access_token ) )->get_client();
+
+		// bail if client is not a Client object.
+		if ( ! $client instanceof \ExternalFilesFromGoogleDrive\Dependencies\Google\Client ) {
+			Log::get_instance()->create( __( 'Google Drive client could not be initiated!', 'external-files-from-google-drive' ), esc_url( $this->get_url() ), 'error', 0, Import::get_instance()->get_identifier() );
+			return false;
+		}
+
+		// connect to Google Drive.
+		$service = new Drive( $client );
+
+		// get the requested ID and the mode.
+		$file_id    = $this->get_file_id();
+		$import_all = 'eflm-import-all' === $file_id;
+		$folder_id  = ! $import_all && false === stripos( $file_id, $google_drive_obj->get_directory() ) ? rtrim( $file_id, '/' ) : '';
+
+		// collect the request query.
+		$query = array(
+			'fields'   => 'files(id,name,mimeType,parents,fileExtension,createdTime,modifiedTime,size,trashed),nextPageToken',
+			'pageSize' => min( 1000, $this->get_file_list_page_size() ),
+			'orderBy'  => 'name_natural',
+		);
+
+		// filter the query like for the directory listing.
+		if ( ! $import_all ) {
+			/** This filter is documented in app/GoogleDrive.php */
+			$query = apply_filters( 'efmlgd_google_drive_query_params', $query, $file_id );
+		}
+
+		// load only the files of the requested folder.
+		if ( '' !== $folder_id ) {
+			$condition  = "'" . str_replace( array( '\\', "'" ), array( '\\\\', "\\'" ), $folder_id ) . "' in parents";
+			$query['q'] = empty( $query['q'] ) ? $condition : '(' . $query['q'] . ') and ' . $condition;
+		}
+
+		// set the token for the requested page.
+		if ( '' !== $cursor ) {
+			$query['pageToken'] = $cursor;
+		}
+
+		// get the page.
+		try {
+			$results = $service->files->listFiles( $query );
+		} catch ( Exception $e ) {
+			Log::get_instance()->create( __( 'List of files could not be loaded from Google Drive. Error:', 'external-files-from-google-drive' ) . ' <code>' . wp_json_encode( $e->getErrors() ) . '</code>', esc_url( $this->get_url() ), 'error', 0, Import::get_instance()->get_identifier() );
+			return false;
+		}
+
+		// get the files.
+		$files = $results->getFiles();
+		if ( ! $import_all ) {
+			/** This filter is documented in app/GoogleDrive.php */
+			$files = apply_filters( 'efmlgd_google_drive_files', $files );
+		}
+
+		// collect the files.
+		$list = array();
+		foreach ( $files as $file_obj ) {
+			// check the file like the import of all files (trashed files are hidden in the directory listing via the query).
+			if ( $import_all && ( $file_obj->getTrashed() || empty( $file_obj->getFileExtension() ) ) ) {
+				continue;
+			}
+			if ( ! $import_all ) {
+				$false = false;
+				/** This filter is documented in app/GoogleDrive.php */
+				if ( apply_filters( 'efmlgd_google_drive_hide_file', $false, $file_obj, $file_id ) ) {
+					continue;
+				}
+
+				// bail if file type is not allowed.
+				$mime_type = wp_check_filetype( $file_obj->getName() );
+				if ( empty( $mime_type['type'] ) ) {
+					continue;
+				}
+			}
+
+			// add the file, which the import saves with its public URL, if it is public.
+			$list[] = array(
+				'url'           => $google_drive_obj->get_url_mark() . $file_obj->getId(),
+				'media-url'     => $google_drive_obj->get_public_url_for_file_id( $file_obj->getId() ),
+				'filesize'      => absint( $file_obj->getSize() ),
+				'last-modified' => absint( strtotime( (string) $file_obj->getCreatedTime() ) ),
+			);
+		}
+
+		// get the token for the next page.
+		$token = (string) $results->getNextPageToken();
+
+		// return the page.
+		return array(
+			'files'  => $list,
+			'cursor' => $token !== $cursor ? $token : '',
+		);
 	}
 
 	/**
@@ -300,9 +459,9 @@ class Protocol extends Protocol_Base {
 			'orderBy'  => 'name_natural',
 		);
 
-		// get the files.
+		// get the files (all parts of the list).
 		try {
-			$results = $service->files->listFiles( $query );
+			$files = GoogleDrive::get_instance()->get_all_files( $service, $query );
 		} catch ( Exception $e ) {
 			// log event.
 			Log::get_instance()->create( __( 'List of files could not be loaded from Google Drive. Error:', 'external-files-from-google-drive' ), esc_url( $this->get_url() ) . ' <code>' . wp_json_encode( $e->getErrors() ) . '</code>', 'error' );
@@ -310,9 +469,6 @@ class Protocol extends Protocol_Base {
 			// return an empty list as we could not analyse the file.
 			return array();
 		}
-
-		// get list of files.
-		$files = $results->getFiles();
 
 		// bail if list is empty.
 		if ( empty( $files ) ) {
@@ -324,11 +480,6 @@ class Protocol extends Protocol_Base {
 
 		// loop through the files and add them to the list.
 		foreach ( $files as $file_obj ) {
-			// bail if this is not a file object.
-			if ( ! $file_obj instanceof DriveFile ) {
-				continue;
-			}
-
 			// hide trashed files.
 			if ( $file_obj->getTrashed() ) {
 				continue;
@@ -372,8 +523,11 @@ class Protocol extends Protocol_Base {
 
 			// and save the file there.
 			try {
-				$wp_filesystem->put_contents( $entry['tmp-file'], $response->getBody()->getContents() );
+				$this->save_response_to_file( $response, $entry['tmp-file'] );
 			} catch ( Error $e ) {
+				// clean up the tmp file.
+				$wp_filesystem->delete( $entry['tmp-file'] );
+
 				// create the error entry.
 				$error_obj = new Url_Result();
 				/* translators: %1$s will be replaced by a URL. */
@@ -404,6 +558,80 @@ class Protocol extends Protocol_Base {
 
 		// return resulting list of files.
 		return $list;
+	}
+
+	/**
+	 * Return temp file from given URL.
+	 *
+	 * Private files are loaded via the API, other files (e.g. exported public files) via HTTP.
+	 *
+	 * @param string             $url The given URL.
+	 * @param WP_Filesystem_Base $filesystem The file system handler.
+	 *
+	 * @return bool|string
+	 */
+	public function get_temp_file( string $url, WP_Filesystem_Base $filesystem ): bool|string {
+		// bail if URL is empty.
+		if ( empty( $url ) ) {
+			return false;
+		}
+
+		// get the external file for this URL.
+		$external_file_obj = Files::get_instance()->get_file_by_url( $url );
+
+		// use the HTTP handler for files, which are not private.
+		if ( ! $external_file_obj instanceof File || ! method_exists( $external_file_obj, 'is_private' ) || ! $external_file_obj->is_private() ) { // @phpstan-ignore function.alreadyNarrowedType
+			$http_protocol_handler = new Http( $url );
+			$http_protocol_handler->set_fields( $this->get_fields() );
+			return $http_protocol_handler->get_temp_file( $url, $filesystem );
+		}
+
+		// get the file ID saved during the export.
+		$file_id = get_post_meta( $external_file_obj->get_id(), 'efml_google_drive_file_id', true );
+
+		// otherwise get the file ID from the URL.
+		if ( ! is_string( $file_id ) || '' === $file_id ) {
+			$file_id = str_replace( GoogleDrive::get_instance()->get_url_mark(), '', $url );
+		}
+
+		// get the Google Drive object.
+		$google_drive_obj = GoogleDrive::get_instance();
+		$google_drive_obj->set_fields( $this->get_fields() );
+
+		// get the client with the access token.
+		$client_obj = new Client( $google_drive_obj->get_access_token() );
+		$client     = $client_obj->get_client();
+
+		// bail if client is not a Client object.
+		if ( ! $client instanceof \ExternalFilesFromGoogleDrive\Dependencies\Google\Client ) {
+			// log event.
+			Log::get_instance()->create( __( 'Google Drive client could not be initiated!', 'external-files-from-google-drive' ), esc_url( $url ), 'error' );
+
+			// do nothing more.
+			return false;
+		}
+
+		// get the tmp file name.
+		$tmp_file = wp_tempnam();
+
+		// load the file and save it in parts, so it is not loaded completely into memory.
+		try {
+			$service  = new Drive( $client );
+			$response = $service->files->get( $file_id, array( 'alt' => 'media' ) );
+			$this->save_response_to_file( $response, $tmp_file );
+		} catch ( \Exception | Error $e ) {
+			// log this event.
+			Log::get_instance()->create( __( 'Private file could not be loaded from Google Drive:', 'external-files-from-google-drive' ) . ' <code>' . esc_html( $e->getMessage() ) . '</code>', esc_url( $url ), 'error' );
+
+			// delete the tmp file.
+			wp_delete_file( $tmp_file );
+
+			// return false as we do not get the file.
+			return false;
+		}
+
+		// return the path to the tmp file.
+		return $tmp_file;
 	}
 
 	/**
@@ -457,8 +685,11 @@ class Protocol extends Protocol_Base {
 
 		// and save the file there.
 		try {
-			$wp_filesystem->put_contents( $entry['tmp-file'], $response->getBody()->getContents() );
+			$this->save_response_to_file( $response, $entry['tmp-file'] );
 		} catch ( Error $e ) {
+			// clean up the tmp file.
+			$wp_filesystem->delete( $entry['tmp-file'] );
+
 			// create the error entry.
 			$error_obj = new Url_Result();
 			/* translators: %1$s will be replaced by a URL. */
@@ -514,5 +745,55 @@ class Protocol extends Protocol_Base {
 	 */
 	public function get_title(): string {
 		return 'Google Drive';
+	}
+
+	/**
+	 * Save the body of the given response of Google Drive in the given file.
+	 *
+	 * The body is read and written in parts, so the file is not loaded completely into memory.
+	 *
+	 * @since 1.4.0 Available since 1.4.0.
+	 *
+	 * @param mixed  $response The response of the request for the content of a file ("alt" = "media").
+	 * @param string $file     The absolute path to the file.
+	 *
+	 * @return void
+	 * @throws Error If the response has no body or the file could not be written.
+	 */
+	private function save_response_to_file( mixed $response, string $file ): void {
+		// bail if the response has no body.
+		if ( ! $response instanceof \ExternalFilesFromGoogleDrive\Dependencies\Psr\Http\Message\ResponseInterface ) {
+			throw new Error( 'Google Drive returns no file content.' );
+		}
+
+		// get the body.
+		$body = $response->getBody();
+
+		// open the file.
+		$handle = fopen( $file, 'wb' ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fopen
+
+		// bail if the file could not be opened.
+		if ( false === $handle ) {
+			throw new Error( 'Local file could not be opened for the download.' );
+		}
+
+		// rewind the body, if possible, to save it completely.
+		if ( $body->isSeekable() ) {
+			$body->rewind();
+		}
+
+		// save the file in parts.
+		while ( ! $body->eof() ) {
+			$written = fwrite( $handle, $body->read( 1024 * 1024 ) ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fwrite
+
+			// bail if the file could not be written.
+			if ( false === $written ) {
+				fclose( $handle ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose
+				throw new Error( 'Local file could not be written.' );
+			}
+		}
+
+		// close the file.
+		fclose( $handle ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose
 	}
 }
