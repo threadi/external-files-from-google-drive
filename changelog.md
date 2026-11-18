@@ -4,6 +4,7 @@
 
 ### Added
 
+- Files are uploaded to Google Drive in parts of 8 MB instead of 1 MB, so large files are uploaded faster; added hook "efmlgd_upload_chunk_size" to change the size
 - Added export of the sizes of images and their original image together with them (requires External Files in Media Library 6.0.0): they are delivered like the images themselves, via the proxy or from Google Drive
 - Added help "Where do I find these details?" to the form (requires External Files in Media Library 6.0.0): how to connect Google Drive, find the ID of a folder and use an own OAuth client
 - Added possibility to define the API credentials for the direct input via constants, e.g. in wp-config.php (requires External Files in Media Library 6.0.0)

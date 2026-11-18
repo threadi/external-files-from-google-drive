@@ -402,7 +402,7 @@ class Export extends Export_Base {
 			$request = $service->files->create( $file_meta_data, array( 'fields' => 'id' ) );
 
 			// set chunk size for upload.
-			$chunk_size = 1024 * 1024;
+			$chunk_size = $this->get_chunk_size();
 			$media      = new MediaFileUpload(
 				$client,
 				$request,
@@ -619,5 +619,31 @@ class Export extends Export_Base {
 	 */
 	public function supports_private_files(): bool {
 		return GoogleDrive::get_instance()->is_access_token_global();
+	}
+
+	/**
+	 * Return the size of the parts, in which files are uploaded to Google Drive: 8 MB by default.
+	 *
+	 * Larger parts need less requests, so large files are uploaded faster. Google Drive requires a multiple of 256 KB.
+	 *
+	 * @since 1.4.0 Available since 1.4.0.
+	 *
+	 * @return int
+	 */
+	public function get_chunk_size(): int {
+		$chunk_size = 8 * MB_IN_BYTES;
+
+		/**
+		 * Filter the size of the parts in bytes, in which files are uploaded to Google Drive.
+		 *
+		 * It is rounded to a multiple of 256 KB, as Google Drive requires it.
+		 *
+		 * @since 1.4.0 Available since 1.4.0.
+		 * @param int $chunk_size The size in bytes.
+		 */
+		$chunk_size = absint( apply_filters( 'efmlgd_upload_chunk_size', $chunk_size ) );
+
+		// return a multiple of 256 KB, at least 256 KB.
+		return max( 1, (int) round( $chunk_size / ( 256 * KB_IN_BYTES ) ) ) * 256 * KB_IN_BYTES;
 	}
 }

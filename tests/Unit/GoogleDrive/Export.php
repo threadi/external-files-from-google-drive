@@ -548,4 +548,25 @@ class Export extends externalFilesFromGoogleDriveTests {
 		$this->assertEquals( 'https://drive.google.com/drive/new123', $url );
 		$this->assertEquals( 'new123', get_post_meta( $attachment_id, 'efml_google_drive_file_id', true ) );
 	}
+
+	/**
+	 * Test the size of the parts for uploads.
+	 *
+	 * @return void
+	 */
+	public function test_chunk_size(): void {
+		// test 1: 8 MB by default.
+		$this->assertSame( 8 * MB_IN_BYTES, $this->get_export()->get_chunk_size() );
+
+		// test 2: a multiple of 256 KB, at least 256 KB.
+		$callback = static function (): int {
+			return 1000000;
+		};
+		add_filter( 'efmlgd_upload_chunk_size', $callback );
+		$this->assertSame( 4 * 256 * KB_IN_BYTES, $this->get_export()->get_chunk_size() );
+		remove_filter( 'efmlgd_upload_chunk_size', $callback );
+		add_filter( 'efmlgd_upload_chunk_size', '__return_zero' );
+		$this->assertSame( 256 * KB_IN_BYTES, $this->get_export()->get_chunk_size() );
+		remove_filter( 'efmlgd_upload_chunk_size', '__return_zero' );
+	}
 }
