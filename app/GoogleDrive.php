@@ -27,6 +27,7 @@ use ExternalFilesInMediaLibrary\ExternalFiles\Results;
 use ExternalFilesInMediaLibrary\ExternalFiles\Results\Url_Result;
 use ExternalFilesInMediaLibrary\Plugin\Admin\Directory_Listing;
 use easyDirectoryListingForWordPress\Crypt;
+use easyDirectoryListingForWordPress\Taxonomy;
 use ExternalFilesInMediaLibrary\Plugin\Helper;
 use ExternalFilesInMediaLibrary\Plugin\Log;
 use ExternalFilesInMediaLibrary\Plugin\Settings;
@@ -49,6 +50,13 @@ class GoogleDrive extends Service_Base implements Service {
 	 * @var array<string,callable>
 	 */
 	private array $crypt_callbacks = array();
+
+	/**
+	 * The user, whose connection is used for the actual task (e.g. the owner of the external source of a file).
+	 *
+	 * @var WP_User|false
+	 */
+	private WP_User|false $context_user = false;
 
 	/**
 	 * Return whether the user settings of this service are encrypted with a context.
@@ -558,6 +566,113 @@ class GoogleDrive extends Service_Base implements Service {
 
 		// return nothing.
 		return array();
+	}
+
+	/**
+	 * Return the user for the connection to Google Drive: the user set for the actual task (e.g. the owner of the
+	 * external source of a file), otherwise the configured or the actual user.
+	 *
+	 * @return WP_User|false
+	 */
+	protected function get_user(): WP_User|false {
+		// use the user of the actual task, if set.
+		if ( $this->context_user instanceof WP_User ) {
+			return $this->context_user;
+		}
+
+		// use the configured or the actual user.
+		return parent::get_user();
+	}
+
+	/**
+	 * Return the user, whose connection to Google Drive is used for the given external source: its owner.
+	 *
+	 * Only if each user has its own connection to Google Drive. Returns false, if the connection of the website is
+	 * used or the owner is unknown.
+	 *
+	 * @since 1.4.0 Available since 1.4.0.
+	 *
+	 * @param int $term_id The ID of the external source.
+	 *
+	 * @return WP_User|false
+	 */
+	public function get_owner_of_source( int $term_id ): WP_User|false {
+		// bail if the connection of the website is used.
+		if ( 0 === $term_id || $this->is_access_token_global() ) {
+			return false;
+		}
+
+		// bail if this is not an external source of Google Drive.
+		if ( $this->get_name() !== get_term_meta( $term_id, 'type', true ) ) {
+			return false;
+		}
+
+		// get the owner of the external source.
+		$user = get_user_by( 'id', absint( get_term_meta( $term_id, 'user_id', true ) ) );
+
+		// return the user, if it exists.
+		return $user instanceof WP_User ? $user : false;
+	}
+
+	/**
+	 * Return the user, whose connection to Google Drive is used for the given file: the owner of its external source.
+	 *
+	 * So the file could be exported and deleted with the connection it belongs to, independent of the actual user
+	 * (e.g. in the background via cron or for uploads of other users). Returns false, if the connection of the
+	 * website is used or the external source is unknown.
+	 *
+	 * @since 1.4.0 Available since 1.4.0.
+	 *
+	 * @param int $attachment_id The attachment ID of the file.
+	 *
+	 * @return WP_User|false
+	 */
+	public function get_owner_of_file( int $attachment_id ): WP_User|false {
+		// bail if the connection of the website is used.
+		if ( 0 === $attachment_id || $this->is_access_token_global() ) {
+			return false;
+		}
+
+		// get the external sources of this file: the export sources and the assigned external sources.
+		$term_ids = get_post_meta( $attachment_id, 'efml_export_sources', true );
+		if ( ! is_array( $term_ids ) ) {
+			$term_ids = array();
+		}
+		$assigned = wp_get_object_terms( $attachment_id, Taxonomy::get_instance()->get_name(), array( 'fields' => 'ids' ) );
+		if ( is_array( $assigned ) ) {
+			$term_ids = array_merge( $term_ids, $assigned );
+		}
+
+		// use the owner of the first external source of Google Drive.
+		foreach ( array_unique( array_map( 'absint', $term_ids ) ) as $term_id ) {
+			$user = $this->get_owner_of_source( $term_id );
+			if ( $user instanceof WP_User ) {
+				return $user;
+			}
+		}
+
+		// return false as no owner is known.
+		return false;
+	}
+
+	/**
+	 * Return the Google client with the connection of the given user (without user: of the actual user or of the
+	 * website). A refreshed token is saved for this user.
+	 *
+	 * @since 1.4.0 Available since 1.4.0.
+	 *
+	 * @param WP_User|false $user The user.
+	 *
+	 * @return \ExternalFilesFromGoogleDrive\Dependencies\Google\Client|false
+	 */
+	public function get_client_for_user( WP_User|false $user ): \ExternalFilesFromGoogleDrive\Dependencies\Google\Client|false {
+		$previous           = $this->context_user;
+		$this->context_user = $user;
+		try {
+			return ( new Client( $this->get_access_token() ) )->get_client( $user instanceof WP_User ? $user->ID : 0 );
+		} finally {
+			$this->context_user = $previous;
+		}
 	}
 
 	/**

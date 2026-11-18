@@ -25,6 +25,9 @@
 
 ### Fixed
 
+- Fixed public exports, which were not public available (HTTP status 404, e.g. via the proxy), if the folder in Google Drive was not shared: exported files and their sizes are shared for anyone with the link now; if this is not allowed (e.g. by a Google Workspace), the uploaded file is removed again and the log names the reason and the option "Save files privately"
+- Exported files are loaded via the API of Google Drive for the proxy, so also files exported before without sharing are delivered again (requires External Files in Media Library 6.0.0 for the sizes)
+- Fixed export, export of the sizes and deletion of files, if each user has its own connection to Google Drive: the connection of the owner of the external source is used now, also for uploads of other users and in the background (requires External Files in Media Library 6.0.0)
 - Fixed delivery of private files via the proxy for visitors and users without the capability for Google Drive, and exports of uploads by such users (requires External Files in Media Library 6.0.0): the protocol is known in each request now, imports still require the capability for Google Drive
 - Fixed missing checks during the connection with Google Drive: the response of Google OAuth is only accepted for a logged-in user, who has started the connection in the last 30 minutes and is allowed to change it (before, a forged response could replace the access token for the whole website); connecting and disconnecting require the capabilities for external files and Google Drive, the connection for the whole website the capability to manage the settings
 - Fixed export of files into the main directory of Google Drive
