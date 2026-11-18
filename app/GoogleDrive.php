@@ -200,6 +200,14 @@ class GoogleDrive extends Service_Base implements Service {
 		// add settings.
 		add_action( 'init', array( $this, 'init_google_drive' ), 30 );
 
+		// use the protocol in each request, e.g. for private files via the proxy and for exports of uploads by users
+		// without the capability for this service. Only if the main plugin checks the capability for imports via the
+		// protocol (External Files in Media Library 6.0.0 or newer), otherwise only for users with the capability.
+		$protocol_in_each_request = method_exists( '\ExternalFilesInMediaLibrary\ExternalFiles\Protocol_Base', 'is_import_allowed_for_user' );
+		if ( $protocol_in_each_request ) {
+			add_filter( 'efml_protocols', array( $this, 'add_protocol' ) );
+		}
+
 		// bail if user has no capability for this service.
 		if ( ! $this->is_import_allowed() ) {
 			return;
@@ -215,8 +223,12 @@ class GoogleDrive extends Service_Base implements Service {
 		add_filter( 'template_include', array( $this, 'check_for_oauth_return_url' ), 10, 1 );
 		add_action( 'show_user_profile', array( $this, 'add_user_settings' ) );
 
+		// use the protocol for users with the capability, if the main plugin does not check it for imports.
+		if ( ! $protocol_in_each_request ) {
+			add_filter( 'efml_protocols', array( $this, 'add_protocol' ) );
+		}
+
 		// use our own hooks.
-		add_filter( 'efml_protocols', array( $this, 'add_protocol' ) );
 		add_filter( 'efml_prevent_import', array( $this, 'check_url' ), 10, 2 );
 		add_filter( 'efmlgd_google_drive_query_params', array( $this, 'set_query_params' ) );
 		add_filter( 'efmlgd_google_drive_hide_file', array( $this, 'prevent_not_allowed_files' ), 10, 3 );

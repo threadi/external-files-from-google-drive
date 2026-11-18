@@ -25,6 +25,7 @@
 
 ### Fixed
 
+- Fixed delivery of private files via the proxy for visitors and users without the capability for Google Drive, and exports of uploads by such users (requires External Files in Media Library 6.0.0): the protocol is known in each request now, imports still require the capability for Google Drive
 - Fixed missing checks during the connection with Google Drive: the response of Google OAuth is only accepted for a logged-in user, who has started the connection in the last 30 minutes and is allowed to change it (before, a forged response could replace the access token for the whole website); connecting and disconnecting require the capabilities for external files and Google Drive, the connection for the whole website the capability to manage the settings
 - Fixed export of files into the main directory of Google Drive
 - Fixed missing delivery of exported files via the proxy, as the files could not be loaded for its cache
