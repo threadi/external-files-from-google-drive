@@ -17,6 +17,8 @@ use ExternalFilesInMediaLibrary\Plugin\Log;
 use ExternalFilesFromGoogleDrive\Dependencies\Google\Http\MediaFileUpload;
 use ExternalFilesFromGoogleDrive\Dependencies\Google\Service\Drive;
 use ExternalFilesFromGoogleDrive\Dependencies\Google\Service\Drive\DriveFile;
+use ExternalFilesFromGoogleDrive\Dependencies\Google\Service\Drive\Permission;
+use WP_User;
 
 /**
  * Object for export files to GoogleDrive.
@@ -86,11 +88,20 @@ class Export extends Export_Base {
 			return false;
 		}
 
+		// get the user, whose connection is used: the owner of the external source.
+		$user = $this->get_owner( $attachment_id, $credentials );
+
 		// upload the file.
-		$file_id = $this->upload( $file_path, $mime_type, $target, $credentials );
+		$file_id = $this->upload( $file_path, $mime_type, $target, $credentials, $user );
 
 		// bail if it could not be uploaded.
 		if ( false === $file_id ) {
+			return false;
+		}
+
+		// share the file for anyone with the link, if it should be public, otherwise remove it again.
+		if ( empty( $credentials['private'] ) && ! $this->share_publicly( $file_id, $target, $user ) ) {
+			$this->remove_uploaded_file( $file_id, $target, $user );
 			return false;
 		}
 
@@ -104,6 +115,104 @@ class Export extends Export_Base {
 
 		// return the public URL for this file.
 		return $google_drive_object->get_public_url_for_file_id( $file_id );
+	}
+
+	/**
+	 * Return the user, whose connection to Google Drive is used for the given file and external source: the owner of
+	 * the external source, if each user has its own connection. False to use the connection of the website or of the
+	 * actual user.
+	 *
+	 * @param int                 $attachment_id The attachment ID.
+	 * @param array<string,mixed> $credentials   The credentials (with the ID of the external source, if known).
+	 *
+	 * @return WP_User|false
+	 */
+	private function get_owner( int $attachment_id, array $credentials ): WP_User|false {
+		// get the main object.
+		$google_drive_object = GoogleDrive::get_instance();
+
+		// use the owner of the given external source.
+		if ( ! empty( $credentials['term_id'] ) ) {
+			$user = $google_drive_object->get_owner_of_source( absint( $credentials['term_id'] ) );
+			if ( $user instanceof WP_User ) {
+				return $user;
+			}
+		}
+
+		// otherwise the owner of the external sources of the file.
+		return $google_drive_object->get_owner_of_file( $attachment_id );
+	}
+
+	/**
+	 * Share the given file in Google Drive for anyone with the link (as reader), so its public URL could be used.
+	 *
+	 * @param string        $file_id The ID of the file.
+	 * @param string        $target  The target of the file (for the log).
+	 * @param WP_User|false $user    The user, whose connection is used.
+	 *
+	 * @return bool
+	 */
+	private function share_publicly( string $file_id, string $target, WP_User|false $user ): bool {
+		// get the client.
+		$client = GoogleDrive::get_instance()->get_client_for_user( $user );
+
+		// bail if client is not a Client object.
+		if ( ! $client instanceof \ExternalFilesFromGoogleDrive\Dependencies\Google\Client ) {
+			return false;
+		}
+
+		// share the file.
+		try {
+			( new Drive( $client ) )->permissions->create(
+				$file_id,
+				new Permission(
+					array(
+						'type' => 'anyone',
+						'role' => 'reader',
+					)
+				)
+			);
+		} catch ( Exception $e ) {
+			// log this event.
+			Log::get_instance()->create( __( 'The file could not be shared for anyone with the link in Google Drive, so it would not be public available (e.g. as your Google Workspace does not allow this). Enable "Save files privately" for this external source to export files without sharing them. Error:', 'external-files-from-google-drive' ) . ' <code>' . esc_html( $e->getMessage() ) . '</code>', $target, 'error' );
+
+			// return false as the file is not public.
+			return false;
+		}
+
+		// return true as the file is shared.
+		return true;
+	}
+
+	/**
+	 * Remove a file, which has just been uploaded, but could not be used.
+	 *
+	 * @param string        $file_id The ID of the file.
+	 * @param string        $target  The target of the file (for the log).
+	 * @param WP_User|false $user    The user, whose connection is used.
+	 *
+	 * @return void
+	 */
+	private function remove_uploaded_file( string $file_id, string $target, WP_User|false $user ): void {
+		// get the client.
+		$client = GoogleDrive::get_instance()->get_client_for_user( $user );
+
+		// bail if client is not a Client object.
+		if ( ! $client instanceof \ExternalFilesFromGoogleDrive\Dependencies\Google\Client ) {
+			return;
+		}
+
+		// delete the file.
+		try {
+			( new Drive( $client ) )->files->delete( $file_id );
+		} catch ( Exception $e ) {
+			// log this event.
+			Log::get_instance()->create( __( 'The uploaded file could not be removed from Google Drive again. Please remove it manually. Error:', 'external-files-from-google-drive' ) . ' <code>' . esc_html( $e->getMessage() ) . '</code>', $target, 'error' );
+			return;
+		}
+
+		// log this event.
+		Log::get_instance()->create( __( 'The uploaded file has been removed from Google Drive again, as it could not be used.', 'external-files-from-google-drive' ), $target, 'info', 2 );
 	}
 
 	/**
@@ -141,11 +250,20 @@ class Export extends Export_Base {
 		$file_type = wp_check_filetype( basename( $source ) );
 		$mime_type = is_string( $file_type['type'] ) && '' !== $file_type['type'] ? $file_type['type'] : (string) get_post_mime_type( $attachment_id );
 
+		// get the user, whose connection is used: the owner of the external source.
+		$user = $this->get_owner( $attachment_id, $credentials );
+
 		// upload the file.
-		$file_id = $this->upload( $source, $mime_type, $target, $credentials );
+		$file_id = $this->upload( $source, $mime_type, $target, $credentials, $user );
 
 		// bail if it could not be uploaded.
 		if ( false === $file_id ) {
+			return false;
+		}
+
+		// share the file for anyone with the link, if it should be public, otherwise remove it again.
+		if ( empty( $credentials['private'] ) && ! $this->share_publicly( $file_id, $target, $user ) ) {
+			$this->remove_uploaded_file( $file_id, $target, $user );
 			return false;
 		}
 
@@ -195,8 +313,8 @@ class Export extends Export_Base {
 		// set the fields.
 		$google_drive_object->set_fields( isset( $credentials['fields'] ) ? $credentials['fields'] : array() );
 
-		// get the client.
-		$client = ( new Client( $google_drive_object->get_access_token() ) )->get_client();
+		// get the client with the connection of the owner of the external source.
+		$client = $google_drive_object->get_client_for_user( $this->get_owner( $attachment_id, $credentials ) );
 
 		// bail if client is not a Client object.
 		if ( ! $client instanceof \ExternalFilesFromGoogleDrive\Dependencies\Google\Client ) {
@@ -225,10 +343,11 @@ class Export extends Export_Base {
 	 * @param string              $mime_type   The mime type of the file.
 	 * @param string              $target      The target.
 	 * @param array<string,mixed> $credentials The credentials.
+	 * @param WP_User|false       $user        The user, whose connection is used (false for the actual user or the website).
 	 *
 	 * @return string|false
 	 */
-	private function upload( string $file_path, string $mime_type, string $target, array $credentials ): string|false {
+	private function upload( string $file_path, string $mime_type, string $target, array $credentials, WP_User|false $user = false ): string|false {
 		// get the main object.
 		$google_drive_object = GoogleDrive::get_instance();
 
@@ -236,8 +355,7 @@ class Export extends Export_Base {
 		$google_drive_object->set_fields( isset( $credentials['fields'] ) ? $credentials['fields'] : array() );
 
 		// get the client.
-		$client_obj = new Client( $google_drive_object->get_access_token() );
-		$client     = $client_obj->get_client();
+		$client = $google_drive_object->get_client_for_user( $user );
 
 		// bail if client is not a Client object.
 		if ( ! $client instanceof \ExternalFilesFromGoogleDrive\Dependencies\Google\Client ) {
@@ -284,7 +402,7 @@ class Export extends Export_Base {
 			$request = $service->files->create( $file_meta_data, array( 'fields' => 'id' ) );
 
 			// set chunk size for upload.
-			$chunk_size = 1024 * 1024;
+			$chunk_size = $this->get_chunk_size();
 			$media      = new MediaFileUpload(
 				$client,
 				$request,
@@ -357,9 +475,8 @@ class Export extends Export_Base {
 		// set the fields on it.
 		$google_drive_object->set_fields( isset( $credentials['fields'] ) ? $credentials['fields'] : array() );
 
-		// get the client.
-		$client_obj = new Client( $google_drive_object->get_access_token() );
-		$client     = $client_obj->get_client();
+		// get the client with the connection of the owner of the external source.
+		$client = $google_drive_object->get_client_for_user( $this->get_owner( $attachment_id, $credentials ) );
 
 		// bail if client is not a Client object.
 		if ( ! $client instanceof \ExternalFilesFromGoogleDrive\Dependencies\Google\Client ) {
@@ -502,5 +619,31 @@ class Export extends Export_Base {
 	 */
 	public function supports_private_files(): bool {
 		return GoogleDrive::get_instance()->is_access_token_global();
+	}
+
+	/**
+	 * Return the size of the parts, in which files are uploaded to Google Drive: 8 MB by default.
+	 *
+	 * Larger parts need less requests, so large files are uploaded faster. Google Drive requires a multiple of 256 KB.
+	 *
+	 * @since 1.4.0 Available since 1.4.0.
+	 *
+	 * @return int
+	 */
+	public function get_chunk_size(): int {
+		$chunk_size = 8 * MB_IN_BYTES;
+
+		/**
+		 * Filter the size of the parts in bytes, in which files are uploaded to Google Drive.
+		 *
+		 * It is rounded to a multiple of 256 KB, as Google Drive requires it.
+		 *
+		 * @since 1.4.0 Available since 1.4.0.
+		 * @param int $chunk_size The size in bytes.
+		 */
+		$chunk_size = absint( apply_filters( 'efmlgd_upload_chunk_size', $chunk_size ) );
+
+		// return a multiple of 256 KB, at least 256 KB.
+		return max( 1, (int) round( $chunk_size / ( 256 * KB_IN_BYTES ) ) ) * 256 * KB_IN_BYTES;
 	}
 }

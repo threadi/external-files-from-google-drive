@@ -1,38 +1,43 @@
 # Changelog
 
-## [Unreleased]
+## [2.0.0] - 22.11.2026
 
 ### Added
 
-- Added export of the sizes of images and their original image together with them (requires External Files in Media Library 6.0.0): they are delivered like the images themselves, via the proxy or from Google Drive
-- Added help "Where do I find these details?" to the form (requires External Files in Media Library 6.0.0): how to connect Google Drive, find the ID of a folder and use an own OAuth client
-- Added possibility to define the API credentials for the direct input via constants, e.g. in wp-config.php (requires External Files in Media Library 6.0.0)
-- Added documentation for the constants in docs/constants.md
-- Added support for the folder structure of exported files, missing folders are created (requires External Files in Media Library 6.0.0)
-- Added support for private files, if the access token is saved for the complete website (requires External Files in Media Library 6.0.0): files are delivered via the cache of the proxy, which loads them via the API
-- Added link to Google Drive in the info box of each file (requires External Files in Media Library 6.0.0)
-- Added support for the connection test in the directory listing (requires External Files in Media Library 6.0.0)
-- Directories and the import of all files are imported file by file via the import of External Files in Media Library 6.0.0: also with tens of thousands of files, in the background if necessary
-- Added search terms for the command palette of WordPress, e.g. other names of the service (requires External Files in Media Library 6.0.0)
-- Google Drive could be connected within the quickstart of External Files in Media Library 6.0.0, afterwards the quickstart continues
+Most of the following requires External Files in Media Library 6.0.0.
+
+- Added connection of Google Drive within the quickstart
+- Added export of image sizes and original images
+- Added private files, if the connection is saved for the whole website
+- Added folder structure for exported files
+- Added API credentials via constants
+- Added setup help "Where do I find these details?"
+- Added connection test in the directory listing
+- Added link to Google Drive for each file
+- Added import of large folders file by file, also in the background
+- Added faster uploads in parts of 8 MB
+- Added search terms for the command palette
+- Added new hooks
 
 ### Changed
 
-- Encrypted settings and access data are bound to their purpose (requires External Files in Media Library 6.0.0): an encrypted value copied into another field cannot be decrypted there; values saved by older versions stay readable and are bound to their purpose when they are saved again
-- Updated German translations, incl. the texts of earlier versions which were not translated yet
-- Removed the setting "Max. files to load per iteration", it is replaced by the import in the background
-- The import of a folder requests only the files of this folder from Google Drive
+- Encrypted values are bound to their purpose
+- Removed the setting "Max. files to load per iteration"
+- The import of a folder requests only its own files
+- Updated German translations
 
 ### Fixed
 
-- Fixed delivery of private files via the proxy for visitors and users without the capability for Google Drive, and exports of uploads by such users (requires External Files in Media Library 6.0.0): the protocol is known in each request now, imports still require the capability for Google Drive
-- Fixed missing checks during the connection with Google Drive: the response of Google OAuth is only accepted for a logged-in user, who has started the connection in the last 30 minutes and is allowed to change it (before, a forged response could replace the access token for the whole website); connecting and disconnecting require the capabilities for external files and Google Drive, the connection for the whole website the capability to manage the settings
-- Fixed export of files into the main directory of Google Drive
-- Fixed missing delivery of exported files via the proxy, as the files could not be loaded for its cache
-- Fixed directory listing and import of more than 1000 files, only the first 1000 files have been used
-- Fixed high memory usage during the import of large files, they are now saved in parts into a local file
+- Fixed missing security checks during the connection with Google Drive
+- Fixed exported files not being publicly available, if the folder was not shared
+- Fixed missing delivery of exported files via the proxy
+- Fixed only the first 1,000 files of a folder being used
+- Fixed export and deletion with a separate connection per user
+- Fixed delivery of private files to visitors and users without the capability for Google Drive
+- Fixed export into the main directory of Google Drive
+- Fixed high memory usage during the import of large files
+- Fixed imports in scheduled tasks without logged-in user
 
-- Fixed imports from Google Drive in scheduled tasks without logged-in user (e.g. via the queue or WP Cron)
 ## [1.3.0] - 24.10.2026
 
 ### Added

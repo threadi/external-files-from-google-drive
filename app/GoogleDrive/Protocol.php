@@ -50,7 +50,7 @@ class Protocol extends Protocol_Base {
 	public function is_import_allowed_for_user(): bool {
 		// use the check of the service, if it is available (External Files in Media Library 6.0.0 or newer).
 		$service_obj = GoogleDrive::get_instance();
-		if ( method_exists( $service_obj, 'is_import_permitted' ) ) {
+		if ( method_exists( $service_obj, 'is_import_permitted' ) ) { // @phpstan-ignore function.alreadyNarrowedType
 			return $service_obj->is_import_permitted();
 		}
 
@@ -563,7 +563,9 @@ class Protocol extends Protocol_Base {
 	/**
 	 * Return temp file from given URL.
 	 *
-	 * Private files are loaded via the API, other files (e.g. exported public files) via HTTP.
+	 * Exported files (private and public) are loaded via the API with the connection of the owner of their external
+	 * source (or of the website), so they are delivered even if their public link does not work (e.g. files exported
+	 * before they have been shared). Other files and exported files without usable connection are loaded via HTTP.
 	 *
 	 * @param string             $url The given URL.
 	 * @param WP_Filesystem_Base $filesystem The file system handler.
@@ -576,34 +578,42 @@ class Protocol extends Protocol_Base {
 			return false;
 		}
 
-		// get the external file for this URL.
+		// get the external file for this URL (or the file, which this protocol is used for, e.g. for its sizes).
 		$external_file_obj = Files::get_instance()->get_file_by_url( $url );
-
-		// use the HTTP handler for files, which are not private.
-		if ( ! $external_file_obj instanceof File || ! method_exists( $external_file_obj, 'is_private' ) || ! $external_file_obj->is_private() ) { // @phpstan-ignore function.alreadyNarrowedType
-			$http_protocol_handler = new Http( $url );
-			$http_protocol_handler->set_fields( $this->get_fields() );
-			return $http_protocol_handler->get_temp_file( $url, $filesystem );
+		if ( ! $external_file_obj instanceof File && method_exists( $this, 'get_external_file' ) ) { // @phpstan-ignore function.alreadyNarrowedType
+			$external_file_obj = $this->get_external_file();
 		}
 
-		// get the file ID saved during the export.
-		$file_id = get_post_meta( $external_file_obj->get_id(), 'efml_google_drive_file_id', true );
-
-		// otherwise get the file ID from the URL.
-		if ( ! is_string( $file_id ) || '' === $file_id ) {
-			$file_id = str_replace( GoogleDrive::get_instance()->get_url_mark(), '', $url );
-		}
+		// check whether the file is private.
+		$is_private = $external_file_obj instanceof File && method_exists( $external_file_obj, 'is_private' ) && $external_file_obj->is_private(); // @phpstan-ignore function.alreadyNarrowedType
 
 		// get the Google Drive object.
 		$google_drive_obj = GoogleDrive::get_instance();
 		$google_drive_obj->set_fields( $this->get_fields() );
 
-		// get the client with the access token.
-		$client_obj = new Client( $google_drive_obj->get_access_token() );
-		$client     = $client_obj->get_client();
+		// get the ID of the file in Google Drive and the client with the connection of the owner of its external
+		// source, if it is an exported file.
+		$file_id = '';
+		$client  = false;
+		if ( $external_file_obj instanceof File ) {
+			$file_id = $this->get_file_id_of_exported_file( $url, $external_file_obj );
+			if ( '' !== $file_id ) {
+				$client = $google_drive_obj->get_client_for_user( $google_drive_obj->get_owner_of_file( $external_file_obj->get_id() ) );
+			}
+		}
 
-		// bail if client is not a Client object.
-		if ( ! $client instanceof \ExternalFilesFromGoogleDrive\Dependencies\Google\Client ) {
+		// load the exported file via the API.
+		if ( $client instanceof \ExternalFilesFromGoogleDrive\Dependencies\Google\Client ) {
+			$tmp_file = $this->load_via_api( $client, $file_id, $url, $is_private );
+
+			// return the file, if it could be loaded or if it is private (it could not be loaded via HTTP).
+			if ( false !== $tmp_file || $is_private ) {
+				return $tmp_file;
+			}
+		}
+
+		// bail for private files without client.
+		if ( $is_private ) {
 			// log event.
 			Log::get_instance()->create( __( 'Google Drive client could not be initiated!', 'external-files-from-google-drive' ), esc_url( $url ), 'error' );
 
@@ -611,6 +621,53 @@ class Protocol extends Protocol_Base {
 			return false;
 		}
 
+		// use the HTTP handler for all other files.
+		$http_protocol_handler = new Http( $url );
+		$http_protocol_handler->set_fields( $this->get_fields() );
+		return $http_protocol_handler->get_temp_file( $url, $filesystem );
+	}
+
+	/**
+	 * Return the ID in Google Drive of the given URL of an exported file (or of one of its sizes), empty for files,
+	 * which have not been exported.
+	 *
+	 * @param string $url               The URL.
+	 * @param File   $external_file_obj The external file.
+	 *
+	 * @return string
+	 */
+	private function get_file_id_of_exported_file( string $url, File $external_file_obj ): string {
+		// bail if the file has not been exported to Google Drive.
+		$exported_file_id = get_post_meta( $external_file_obj->get_id(), 'efml_google_drive_file_id', true );
+		if ( ! is_string( $exported_file_id ) || '' === $exported_file_id ) {
+			return '';
+		}
+
+		// get the ID from the URL: the internal URL of private files or the public URL with the parameter "id".
+		$google_drive_obj = GoogleDrive::get_instance();
+		if ( str_starts_with( $url, $google_drive_obj->get_url_mark() ) ) {
+			$file_id = substr( $url, strlen( $google_drive_obj->get_url_mark() ) );
+		} else {
+			$query = array();
+			wp_parse_str( (string) wp_parse_url( $url, PHP_URL_QUERY ), $query );
+			$file_id = isset( $query['id'] ) && is_string( $query['id'] ) ? $query['id'] : '';
+		}
+
+		// use the ID saved during the export, if the URL does not contain one.
+		return '' !== $file_id ? $file_id : $exported_file_id;
+	}
+
+	/**
+	 * Load the given file via the API of Google Drive into a temporary file and return its path, false on errors.
+	 *
+	 * @param \ExternalFilesFromGoogleDrive\Dependencies\Google\Client $client     The client.
+	 * @param string                                                   $file_id    The ID of the file.
+	 * @param string                                                   $url        The URL of the file (for the log).
+	 * @param bool                                                     $is_private Whether the file is private.
+	 *
+	 * @return string|false
+	 */
+	private function load_via_api( \ExternalFilesFromGoogleDrive\Dependencies\Google\Client $client, string $file_id, string $url, bool $is_private ): string|false {
 		// get the tmp file name.
 		$tmp_file = wp_tempnam();
 
@@ -620,8 +677,12 @@ class Protocol extends Protocol_Base {
 			$response = $service->files->get( $file_id, array( 'alt' => 'media' ) );
 			$this->save_response_to_file( $response, $tmp_file );
 		} catch ( \Exception | Error $e ) {
-			// log this event.
-			Log::get_instance()->create( __( 'Private file could not be loaded from Google Drive:', 'external-files-from-google-drive' ) . ' <code>' . esc_html( $e->getMessage() ) . '</code>', esc_url( $url ), 'error' );
+			// log this event: as error for private files, as info for public files (they are loaded via HTTP then).
+			if ( $is_private ) {
+				Log::get_instance()->create( __( 'Private file could not be loaded from Google Drive:', 'external-files-from-google-drive' ) . ' <code>' . esc_html( $e->getMessage() ) . '</code>', esc_url( $url ), 'error' );
+			} else {
+				Log::get_instance()->create( __( 'File could not be loaded via the API of Google Drive, its public link is used:', 'external-files-from-google-drive' ) . ' <code>' . esc_html( $e->getMessage() ) . '</code>', esc_url( $url ), 'info', 2 );
+			}
 
 			// delete the tmp file.
 			wp_delete_file( $tmp_file );

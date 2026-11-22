@@ -367,6 +367,50 @@ class Protocol extends externalFilesFromGoogleDriveTests {
 	}
 
 	/**
+	 * Test the temporary file of a public exported file: it is loaded via the API, so it is delivered even if its
+	 * public link does not work (e.g. exported before the files have been shared).
+	 *
+	 * @return void
+	 */
+	public function test_get_temp_file_of_public_exported_file(): void {
+		$this->connect();
+		$url           = 'https://drive.usercontent.google.com/download?id=file123&export=download';
+		$attachment_id = $this->create_local_attachment();
+		update_post_meta( $attachment_id, EFML_POST_META_URL, $url );
+		update_post_meta( $attachment_id, 'efml_google_drive_file_id', 'file123' );
+		$this->add_google_file( 'file123', 'example.jpg', 'my public content' );
+
+		// get the temporary file.
+		$protocol = new \ExternalFilesFromGoogleDrive\GoogleDrive\Protocol( $url );
+		$tmp_file = $protocol->get_temp_file( $url, \ExternalFilesInMediaLibrary\Plugin\Helper::get_wp_filesystem() );
+		$this->assertIsString( $tmp_file );
+		$this->assertEquals( 'my public content', file_get_contents( $tmp_file ) ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+		wp_delete_file( $tmp_file );
+
+		// no request via HTTP.
+		$this->assertEmpty( $this->get_http_requests() );
+	}
+
+	/**
+	 * Test the temporary file of a public file, which has not been exported (e.g. imported via its URL): it is
+	 * loaded via HTTP, not via the API.
+	 *
+	 * @return void
+	 */
+	public function test_get_temp_file_of_imported_public_file(): void {
+		$this->connect();
+		$url           = 'https://drive.usercontent.google.com/download?id=file456&export=download';
+		$attachment_id = $this->create_local_attachment();
+		update_post_meta( $attachment_id, EFML_POST_META_URL, $url );
+		$this->add_http_response( $url, 404 );
+
+		$protocol = new \ExternalFilesFromGoogleDrive\GoogleDrive\Protocol( $url );
+		$protocol->get_temp_file( $url, \ExternalFilesInMediaLibrary\Plugin\Helper::get_wp_filesystem() );
+		$this->assertEmpty( $this->get_google_requests() );
+		$this->assertNotEmpty( $this->get_http_requests() );
+	}
+
+	/**
 	 * Test the URL of the platform.
 	 *
 	 * @return void

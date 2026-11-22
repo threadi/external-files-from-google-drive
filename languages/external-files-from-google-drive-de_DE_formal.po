@@ -563,3 +563,19 @@ msgstr "Du darfst die Verbindung zu Google Drive nicht trennen."
 #: app/GoogleDrive.php
 msgid "The response from Google OAuth does not match a connection started by this user and has been ignored."
 msgstr "Die Antwort von Google OAuth gehört zu keiner Verbindung, die dieser Benutzer gestartet hat, und wurde ignoriert."
+
+#: app/GoogleDrive/Export.php:177
+msgid "The file could not be shared for anyone with the link in Google Drive, so it would not be public available (e.g. as your Google Workspace does not allow this). Enable \"Save files privately\" for this external source to export files without sharing them. Error:"
+msgstr "Die Datei konnte in Google Drive nicht für alle mit dem Link freigegeben werden und wäre daher nicht öffentlich erreichbar (z. B. weil dein Google Workspace das nicht erlaubt). Aktiviere „Dateien privat speichern“ für diese externe Quelle, um Dateien ohne Freigabe zu exportieren. Fehler:"
+
+#: app/GoogleDrive/Export.php:210
+msgid "The uploaded file could not be removed from Google Drive again. Please remove it manually. Error:"
+msgstr "Die hochgeladene Datei konnte nicht wieder aus Google Drive entfernt werden. Bitte lösche sie manuell. Fehler:"
+
+#: app/GoogleDrive/Export.php:215
+msgid "The uploaded file has been removed from Google Drive again, as it could not be used."
+msgstr "Die hochgeladene Datei wurde wieder aus Google Drive entfernt, da sie nicht genutzt werden konnte."
+
+#: app/GoogleDrive/Protocol.php:684
+msgid "File could not be loaded via the API of Google Drive, its public link is used:"
+msgstr "Die Datei konnte nicht über die API von Google Drive geladen werden, ihr öffentlicher Link wird genutzt:"
