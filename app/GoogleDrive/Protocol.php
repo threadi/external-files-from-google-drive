@@ -31,6 +31,23 @@ use WP_Filesystem_Base;
  */
 class Protocol extends Protocol_Base {
 	/**
+	 * Prefix of the cursor for the listing of a folder with its subfolders.
+	 */
+	private const FOLDER_CURSOR_PREFIX = 'efmlgd-folders:';
+
+	/**
+	 * The MIME type of folders in Google Drive.
+	 */
+	private const FOLDER_MIME_TYPE = 'application/vnd.google-apps.folder';
+
+	/**
+	 * The names and parents of files and folders in Google Drive, loaded during this request.
+	 *
+	 * @var array<string,array{name: string, parents: array<int,string>}>
+	 */
+	private static array $drive_entries = array();
+
+	/**
 	 * The internal protocol name.
 	 *
 	 * @var string
@@ -126,6 +143,11 @@ class Protocol extends Protocol_Base {
 
 		// get the ID from the URL.
 		$file_id = str_replace( $google_drive_obj->get_url_mark(), '', $url );
+
+		// use the file list, if the use of subdirectories differs from the default (e.g. during a synchronization).
+		if ( $this->is_directory() && $this->use_subdirectories() !== $this->get_subdirectories_default() ) {
+			return $this->get_url_infos_via_file_list( $access_token );
+		}
 
 		// if file id is "eflm-import-all" do this.
 		if ( 'eflm-import-all' === $file_id ) {
@@ -248,6 +270,72 @@ class Protocol extends Protocol_Base {
 	}
 
 	/**
+	 * Return the files of the directory of the URL of this object via its file list, with their data for the import.
+	 *
+	 * Used for imports without import run, if the files of subdirectories should be used other than by default.
+	 *
+	 * @param array<string,mixed> $access_token The access token.
+	 *
+	 * @return array<int,array<string,mixed>>
+	 */
+	private function get_url_infos_via_file_list( array $access_token ): array {
+		// get the client.
+		$client = ( new Client( $access_token ) )->get_client();
+
+		// bail if client is not a Client object.
+		if ( ! $client instanceof \ExternalFilesFromGoogleDrive\Dependencies\Google\Client ) {
+			Log::get_instance()->create( __( 'Google Drive client could not be initiated!', 'external-files-from-google-drive' ), esc_url( $this->get_url() ), 'error', 0, Import::get_instance()->get_identifier() );
+			return array();
+		}
+
+		// connect to Google Drive.
+		$service = new Drive( $client );
+
+		// get the URL mark.
+		$url_mark = GoogleDrive::get_instance()->get_url_mark();
+
+		// collect the files page by page.
+		$results = array();
+		$cursor  = '';
+		do {
+			// get the page.
+			$page = $this->get_file_list( $cursor );
+
+			// bail on errors.
+			if ( false === $page ) {
+				return $results;
+			}
+
+			// add the data of each file.
+			foreach ( $page['files'] as $file ) {
+				// bail if the file already exists in the media library.
+				if ( $this->check_for_duplicate( $file['url'] ) ) {
+					continue;
+				}
+
+				// get the file data.
+				try {
+					$entry = $this->get_file_data( $service, str_replace( $url_mark, '', $file['url'] ) );
+				} catch ( Exception $e ) {
+					Log::get_instance()->create( __( 'Google Drive client could not download the requested file! Error:', 'external-files-from-google-drive' ) . ' <code>' . wp_json_encode( $e->getErrors() ) . '</code>', esc_url( $file['url'] ), 'error' );
+					continue;
+				}
+
+				// add it, if it could be loaded.
+				if ( ! empty( $entry ) ) {
+					$results[] = $entry;
+				}
+			}
+
+			// get the next page.
+			$cursor = $page['cursor'];
+		} while ( '' !== $cursor );
+
+		// return the files.
+		return $results;
+	}
+
+	/**
 	 * Return whether the file should be saved local (true) or not (false).
 	 *
 	 * @return bool
@@ -284,6 +372,243 @@ class Protocol extends Protocol_Base {
 	}
 
 	/**
+	 * Return whether the URL of this object is the main directory or the import of all files.
+	 *
+	 * @return bool
+	 */
+	private function is_main_directory(): bool {
+		// get the ID.
+		$file_id = $this->get_file_id();
+
+		// return whether all files or the main directory should be used.
+		return 'eflm-import-all' === $file_id || false !== stripos( $file_id, GoogleDrive::get_instance()->get_directory() );
+	}
+
+	/**
+	 * Return whether this protocol could use the files of subdirectories during a synchronization.
+	 *
+	 * @since 2.1.0 Available since 2.1.0.
+	 *
+	 * @return bool
+	 */
+	public function supports_subdirectories(): bool {
+		return true;
+	}
+
+	/**
+	 * Return whether this protocol uses the files of subdirectories by default.
+	 *
+	 * The main directory and the import of all files have always used all files of Google Drive, a folder only its
+	 * own files.
+	 *
+	 * @since 2.1.0 Available since 2.1.0.
+	 *
+	 * @return bool
+	 */
+	public function get_subdirectories_default(): bool {
+		return $this->is_main_directory();
+	}
+
+	/**
+	 * Return the path of the directory of the given file URL relative to the folder of the URL of this object.
+	 *
+	 * The URLs of files in Google Drive contain only their ID. So the path is created from the names of the parent
+	 * folders up to the folder of this object (or up to the root of Google Drive for the main directory). The data
+	 * of the folders is loaded once per request.
+	 *
+	 * @since 2.1.0 Available since 2.1.0.
+	 *
+	 * @param string $file_url The URL of the file.
+	 *
+	 * @return string
+	 */
+	public function get_relative_directory( string $file_url ): string {
+		// get the URL mark.
+		$url_mark = GoogleDrive::get_instance()->get_url_mark();
+
+		// bail if this is not a URL of Google Drive.
+		if ( ! str_starts_with( $file_url, $url_mark ) ) {
+			return '';
+		}
+
+		// get the ID of the file and of the folder of this object (empty for the main directory).
+		$file_id   = rtrim( substr( $file_url, strlen( $url_mark ) ), '/' );
+		$folder_id = $this->is_main_directory() ? '' : rtrim( $this->get_file_id(), '/' );
+
+		// collect the names of the parent folders.
+		$names   = array();
+		$current = $file_id;
+		for ( $level = 0; $level < 50; $level++ ) {
+			// get the data of the actual entry.
+			$entry = $this->get_drive_entry( $current );
+
+			// bail if it could not be loaded or has no parent.
+			if ( false === $entry || empty( $entry['parents'] ) ) {
+				// the root of Google Drive is reached: the path is complete for the main directory.
+				return '' === $folder_id && false !== $entry ? implode( '/', array_reverse( array_slice( $names, 0, -1 ) ) ) : '';
+			}
+
+			// get the first parent.
+			$parent_id = $entry['parents'][0];
+
+			// the folder of this object is reached: the path is complete.
+			if ( '' !== $folder_id && $parent_id === $folder_id ) {
+				return implode( '/', array_reverse( $names ) );
+			}
+
+			// get the parent folder.
+			$parent = $this->get_drive_entry( $parent_id );
+			if ( false === $parent ) {
+				return '';
+			}
+
+			// add its name and continue with it.
+			$names[] = $parent['name'];
+			$current = $parent_id;
+		}
+
+		// the path is too deep.
+		return '';
+	}
+
+	/**
+	 * Return the name and the parents of the given file or folder in Google Drive, loaded once per request.
+	 *
+	 * @param string $id The ID of the file or folder.
+	 *
+	 * @return array{name: string, parents: array<int,string>}|false
+	 */
+	private function get_drive_entry( string $id ): array|false {
+		// return the data, if it has already been loaded.
+		if ( isset( self::$drive_entries[ $id ] ) ) {
+			return self::$drive_entries[ $id ];
+		}
+
+		// get the access token.
+		$access_token = GoogleDrive::get_instance()->get_access_token();
+		if ( empty( $access_token ) ) {
+			return false;
+		}
+
+		// get the client.
+		$client = ( new Client( $access_token ) )->get_client();
+		if ( ! $client instanceof \ExternalFilesFromGoogleDrive\Dependencies\Google\Client ) {
+			return false;
+		}
+
+		// load the data.
+		try {
+			$file_obj = ( new Drive( $client ) )->files->get( $id, array( 'fields' => 'id,name,parents' ) );
+		} catch ( Exception $e ) {
+			Log::get_instance()->create( __( 'The folder of a file could not be loaded from Google Drive. Error:', 'external-files-from-google-drive' ) . ' <code>' . wp_json_encode( $e->getErrors() ) . '</code>', esc_url( $this->get_url() ), 'error', 2 );
+			return false;
+		}
+
+		// save and return the data.
+		self::$drive_entries[ $id ] = array(
+			'name'    => (string) $file_obj->getName(),
+			'parents' => array_values( array_map( 'strval', (array) $file_obj->getParents() ) ),
+		);
+		return self::$drive_entries[ $id ];
+	}
+
+	/**
+	 * Return whether the files of subdirectories should be used.
+	 *
+	 * Older versions of "External Files in Media Library" do not know this setting: the default is used then like
+	 * before.
+	 *
+	 * @return bool
+	 */
+	private function use_subdirectories(): bool {
+		// bail if the main plugin does not support the setting.
+		if ( ! method_exists( $this, 'is_subdirectories_enabled' ) ) { // @phpstan-ignore function.alreadyNarrowedType
+			return $this->get_subdirectories_default();
+		}
+
+		// return the setting.
+		return $this->is_subdirectories_enabled();
+	}
+
+	/**
+	 * Return the state of the listing of a folder with its subfolders from the given cursor.
+	 *
+	 * The state contains the folders, which are still to be listed (with their depth), and the token for the next
+	 * page of the first of them. It is saved in the cursor between the pages.
+	 *
+	 * @param string $cursor    The cursor.
+	 * @param string $folder_id The ID of the requested folder.
+	 *
+	 * @return array{f: array<int,array{id: string, d: int}>, t: string}|false
+	 */
+	private function get_folder_state( string $cursor, string $folder_id ): array|false {
+		// start with the requested folder.
+		if ( '' === $cursor ) {
+			return array(
+				'f' => array(
+					array(
+						'id' => $folder_id,
+						'd'  => 0,
+					),
+				),
+				't' => '',
+			);
+		}
+
+		// bail if this is not a cursor of this listing.
+		if ( ! str_starts_with( $cursor, self::FOLDER_CURSOR_PREFIX ) ) {
+			return false;
+		}
+
+		// get the state.
+		$state = json_decode( (string) base64_decode( substr( $cursor, strlen( self::FOLDER_CURSOR_PREFIX ) ) ), true ); // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_decode
+
+		// bail if the state is not usable.
+		if ( ! is_array( $state ) || empty( $state['f'] ) || ! is_array( $state['f'] ) ) {
+			return false;
+		}
+
+		// collect the folders.
+		$folders = array();
+		foreach ( $state['f'] as $folder ) {
+			if ( is_array( $folder ) && ! empty( $folder['id'] ) ) {
+				$folders[] = array(
+					'id' => (string) $folder['id'],
+					'd'  => absint( $folder['d'] ?? 0 ),
+				);
+			}
+		}
+
+		// bail if no folder is left.
+		if ( empty( $folders ) ) {
+			return false;
+		}
+
+		// return the state.
+		return array(
+			'f' => $folders,
+			't' => (string) ( $state['t'] ?? '' ),
+		);
+	}
+
+	/**
+	 * Return the cursor for the given state of the listing of a folder with its subfolders.
+	 *
+	 * @param array{f: array<int,array{id: string, d: int}>, t: string} $state The state.
+	 *
+	 * @return string
+	 */
+	private function get_folder_cursor( array $state ): string {
+		// bail if no folder is left.
+		if ( empty( $state['f'] ) ) {
+			return '';
+		}
+
+		// return the state as cursor.
+		return self::FOLDER_CURSOR_PREFIX . base64_encode( (string) wp_json_encode( $state ) ); // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_encode
+	}
+
+	/**
 	 * Return whether the URL of this object is a directory or the import of all files.
 	 *
 	 * @return bool
@@ -299,7 +624,9 @@ class Protocol extends Protocol_Base {
 	/**
 	 * Return one page of the files in the requested directory, in the main directory or of all files.
 	 *
-	 * Like the import of a directory: a folder contains only its own files, the main directory all files.
+	 * Like the import of a directory: a folder contains only its own files, the main directory all files. During a
+	 * synchronization this could be changed: a folder could also contain the files of its subfolders (one folder
+	 * after the other, the cursor contains the folders to list), the main directory only its own files.
 	 *
 	 * @param string $cursor The cursor for the requested page.
 	 *
@@ -335,6 +662,27 @@ class Protocol extends Protocol_Base {
 		$import_all = 'eflm-import-all' === $file_id;
 		$folder_id  = ! $import_all && false === stripos( $file_id, $google_drive_obj->get_directory() ) ? rtrim( $file_id, '/' ) : '';
 
+		// get whether the files of subdirectories should be used.
+		$use_subdirectories = $this->use_subdirectories();
+
+		// get the folder, whose files are requested, and the token of the page.
+		$state      = false;
+		$parent_id  = $folder_id;
+		$page_token = $cursor;
+		if ( '' === $folder_id && ! $use_subdirectories ) {
+			// use only the files in the root of Google Drive.
+			$parent_id = 'root';
+		} elseif ( '' !== $folder_id && $use_subdirectories ) {
+			// use the folder and its subfolders, one after the other.
+			$state = $this->get_folder_state( $cursor, $folder_id );
+			if ( false === $state ) {
+				Log::get_instance()->create( __( 'The cursor for the list of files from Google Drive is not valid.', 'external-files-from-google-drive' ), esc_url( $this->get_url() ), 'error', 0, Import::get_instance()->get_identifier() );
+				return false;
+			}
+			$parent_id  = $state['f'][0]['id'];
+			$page_token = $state['t'];
+		}
+
 		// collect the request query.
 		$query = array(
 			'fields'   => 'files(id,name,mimeType,parents,fileExtension,createdTime,modifiedTime,size,trashed),nextPageToken',
@@ -349,20 +697,25 @@ class Protocol extends Protocol_Base {
 		}
 
 		// load only the files of the requested folder.
-		if ( '' !== $folder_id ) {
-			$condition  = "'" . str_replace( array( '\\', "'" ), array( '\\\\', "\\'" ), $folder_id ) . "' in parents";
+		if ( '' !== $parent_id ) {
+			$condition  = "'" . str_replace( array( '\\', "'" ), array( '\\\\', "\\'" ), $parent_id ) . "' in parents";
 			$query['q'] = empty( $query['q'] ) ? $condition : '(' . $query['q'] . ') and ' . $condition;
 		}
 
 		// set the token for the requested page.
-		if ( '' !== $cursor ) {
-			$query['pageToken'] = $cursor;
+		if ( '' !== $page_token ) {
+			$query['pageToken'] = $page_token;
 		}
 
 		// get the page.
 		try {
 			$results = $service->files->listFiles( $query );
 		} catch ( Exception $e ) {
+			// skip a subfolder, which could not be read, and continue with the next folder.
+			if ( false !== $state && $state['f'][0]['d'] > 0 ) {
+				return $this->skip_folder( $state, $e );
+			}
+
 			Log::get_instance()->create( __( 'List of files could not be loaded from Google Drive. Error:', 'external-files-from-google-drive' ) . ' <code>' . wp_json_encode( $e->getErrors() ) . '</code>', esc_url( $this->get_url() ), 'error', 0, Import::get_instance()->get_identifier() );
 			return false;
 		}
@@ -377,6 +730,18 @@ class Protocol extends Protocol_Base {
 		// collect the files.
 		$list = array();
 		foreach ( $files as $file_obj ) {
+			// remember subfolders, whose files should be used, and use them after the actual folder.
+			if ( false !== $state && self::FOLDER_MIME_TYPE === $file_obj->getMimeType() ) {
+				$depth = $state['f'][0]['d'] + 1;
+				if ( $depth <= $this->get_subdirectories_max_depth() && ! in_array( (string) $file_obj->getName(), $this->get_excluded_directories(), true ) ) {
+					$state['f'][] = array(
+						'id' => (string) $file_obj->getId(),
+						'd'  => $depth,
+					);
+				}
+				continue;
+			}
+
 			// check the file like the import of all files (trashed files are hidden in the directory listing via the query).
 			if ( $import_all && ( $file_obj->getTrashed() || empty( $file_obj->getFileExtension() ) ) ) {
 				continue;
@@ -407,10 +772,57 @@ class Protocol extends Protocol_Base {
 		// get the token for the next page.
 		$token = (string) $results->getNextPageToken();
 
+		// return the page of a folder with its subfolders: continue with the next page or the next folder.
+		if ( false !== $state ) {
+			if ( '' !== $token && $token !== $page_token ) {
+				$state['t'] = $token;
+			} else {
+				array_shift( $state['f'] );
+				$state['t'] = '';
+			}
+
+			return array(
+				'files'  => $list,
+				'cursor' => $this->get_folder_cursor( $state ),
+			);
+		}
+
 		// return the page.
 		return array(
 			'files'  => $list,
 			'cursor' => $token !== $cursor ? $token : '',
+		);
+	}
+
+	/**
+	 * Skip the actual folder of the given state, as it could not be read, and return an empty page for the next folder.
+	 *
+	 * Files in Google Drive have no path in their URL. So no file of the external source is deleted during this
+	 * synchronization, as the files of the skipped folder could not be recognized.
+	 *
+	 * @param array{f: array<int,array{id: string, d: int}>, t: string} $state The state of the listing.
+	 * @param Exception                                                 $e     The error.
+	 *
+	 * @return array{files: array<int,array{url: string, media-url?: string, filesize?: int, last-modified?: int}>, cursor: string}
+	 */
+	private function skip_folder( array $state, Exception $e ): array {
+		// get the URL of the folder.
+		$url = GoogleDrive::get_instance()->get_url_mark() . $state['f'][0]['id'] . '/';
+
+		// log this event.
+		Log::get_instance()->create( __( 'The folder could not be read from Google Drive and has been skipped. Error:', 'external-files-from-google-drive' ) . ' <code>' . wp_json_encode( $e->getErrors() ) . '</code>', esc_url( $url ), 'error', 0, Import::get_instance()->get_identifier() );
+
+		// protect all files of Google Drive from the deletion after the synchronization.
+		$this->skip_subdirectory( GoogleDrive::get_instance()->get_url_mark() );
+
+		// continue with the next folder.
+		array_shift( $state['f'] );
+		$state['t'] = '';
+
+		// return the empty page.
+		return array(
+			'files'  => array(),
+			'cursor' => $this->get_folder_cursor( $state ),
 		);
 	}
 

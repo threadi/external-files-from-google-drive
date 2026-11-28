@@ -450,4 +450,252 @@ class Protocol extends externalFilesFromGoogleDriveTests {
 			wp_delete_file( $file );
 		}
 	}
+
+	/**
+	 * Return the query for the files of the given folder, like the protocol requests it.
+	 *
+	 * @param string $folder_id The ID of the folder.
+	 *
+	 * @return string
+	 */
+	private function get_folder_query( string $folder_id ): string {
+		$query     = apply_filters( 'efmlgd_google_drive_query_params', array(), 'folder1/' );
+		$condition = "'" . $folder_id . "' in parents";
+		return empty( $query['q'] ) ? $condition : '(' . $query['q'] . ') and ' . $condition;
+	}
+
+	/**
+	 * Return the data of a file or folder for a response of the file list.
+	 *
+	 * @param string $id The ID.
+	 * @param string $name The name.
+	 * @param string $parent The ID of the parent folder.
+	 * @param bool   $is_folder Whether this is a folder.
+	 *
+	 * @return array<string,mixed>
+	 */
+	private function get_list_entry( string $id, string $name, string $parent, bool $is_folder = false ): array {
+		return array(
+			'id'          => $id,
+			'name'        => $name,
+			'mimeType'    => $is_folder ? 'application/vnd.google-apps.folder' : 'image/jpeg',
+			'parents'     => array( $parent ),
+			'size'        => $is_folder ? null : '706',
+			'createdTime' => '2024-01-02T03:04:05.000Z',
+		);
+	}
+
+	/**
+	 * Test the defaults for subdirectories: the main directory and the import of all files use all files, a folder only its own.
+	 *
+	 * @return void
+	 */
+	public function test_subdirectories_defaults(): void {
+		$this->assertTrue( $this->get_protocol( $this->mark . 'folder1/' )->supports_subdirectories() );
+		$this->assertFalse( $this->get_protocol( $this->mark . 'folder1/' )->get_subdirectories_default() );
+		$this->assertTrue( $this->get_protocol( $this->mark . 'eflm-import-all' )->get_subdirectories_default() );
+	}
+
+	/**
+	 * Test the file list of a folder with its subfolders: one folder after the other, excluded folders and folders
+	 * deeper than the maximum depth are not used.
+	 *
+	 * @return void
+	 */
+	public function test_get_file_list_of_folder_with_subfolders(): void {
+		$this->connect();
+		$this->add_google_response(
+			'GET',
+			'files',
+			200,
+			array(
+				'files' => array(
+					$this->get_list_entry( 'file1', 'a.jpg', 'folder1' ),
+					$this->get_list_entry( 'sub1', 'Holidays', 'folder1', true ),
+					$this->get_list_entry( 'excluded', 'node_modules', 'folder1', true ),
+				),
+			),
+			array( 'q' => $this->get_folder_query( 'folder1' ) )
+		);
+		$this->add_google_response(
+			'GET',
+			'files',
+			200,
+			array(
+				'files' => array(
+					$this->get_list_entry( 'file2', 'b.jpg', 'sub1' ),
+					$this->get_list_entry( 'sub2', '2024', 'sub1', true ),
+				),
+			),
+			array( 'q' => $this->get_folder_query( 'sub1' ) )
+		);
+		$protocol = $this->get_protocol( $this->mark . 'folder1/' );
+
+		add_filter( 'efml_include_subdirectories', '__return_true' );
+		add_filter( 'efml_subdirectories_max_depth', static fn() => 1 );
+
+		// the first page contains the file of the folder.
+		$page = $protocol->get_file_list( '' );
+		$this->assertIsArray( $page );
+		$this->assertEquals( array( $this->mark . 'file1' ), array_column( $page['files'], 'url' ) );
+		$this->assertNotEmpty( $page['cursor'] );
+
+		// the next page contains the file of the subfolder, its subfolder is too deep.
+		$page = $protocol->get_file_list( $page['cursor'] );
+		$this->assertIsArray( $page );
+		$this->assertEquals( array( $this->mark . 'file2' ), array_column( $page['files'], 'url' ) );
+		$this->assertEquals( '', $page['cursor'] );
+
+		remove_filter( 'efml_include_subdirectories', '__return_true' );
+
+		// the excluded and the too deep folders have not been requested.
+		$queries = array_column( array_column( $this->get_google_requests(), 'query' ), 'q' );
+		$this->assertNotContains( $this->get_folder_query( 'excluded' ), $queries );
+		$this->assertNotContains( $this->get_folder_query( 'sub2' ), $queries );
+	}
+
+	/**
+	 * Test that a subfolder, which could not be read, is skipped and protects the files from the deletion.
+	 *
+	 * @return void
+	 */
+	public function test_get_file_list_with_unreadable_subfolder(): void {
+		$this->connect();
+		$this->add_google_response(
+			'GET',
+			'files',
+			200,
+			array( 'files' => array( $this->get_list_entry( 'file1', 'a.jpg', 'folder1' ), $this->get_list_entry( 'sub1', 'Private', 'folder1', true ) ) ),
+			array( 'q' => $this->get_folder_query( 'folder1' ) )
+		);
+		$this->add_google_response( 'GET', 'files', 403, array( 'error' => array( 'code' => 403, 'message' => 'Forbidden' ) ), array( 'q' => $this->get_folder_query( 'sub1' ) ) );
+		$protocol = $this->get_protocol( $this->mark . 'folder1/' );
+
+		$skipped  = array();
+		$callback = static function ( string $url ) use ( &$skipped ): void {
+			$skipped[] = $url;
+		};
+		add_action( 'efml_subdirectory_skipped', $callback );
+		add_filter( 'efml_include_subdirectories', '__return_true' );
+		$page = $protocol->get_file_list( '' );
+		$this->assertIsArray( $page );
+		$page = $protocol->get_file_list( $page['cursor'] );
+		remove_filter( 'efml_include_subdirectories', '__return_true' );
+		remove_action( 'efml_subdirectory_skipped', $callback );
+
+		// the listing continues without files of the subfolder, all files of Google Drive are protected.
+		$this->assertIsArray( $page );
+		$this->assertEmpty( $page['files'] );
+		$this->assertEquals( '', $page['cursor'] );
+		$this->assertEquals( array( $this->mark ), $skipped );
+	}
+
+	/**
+	 * Test the file list of all files without subfolders: only the files in the root of Google Drive are requested.
+	 *
+	 * @return void
+	 */
+	public function test_get_file_list_of_all_files_without_subfolders(): void {
+		$this->connect();
+		$this->add_file_list( array( $this->get_list_entry( 'file1', 'a.jpg', 'root' ) ) );
+
+		add_filter( 'efml_include_subdirectories', '__return_false' );
+		$page = $this->get_protocol( $this->mark . 'eflm-import-all' )->get_file_list( '' );
+		remove_filter( 'efml_include_subdirectories', '__return_false' );
+
+		$this->assertIsArray( $page );
+		$requests = $this->get_google_requests();
+		$request  = end( $requests );
+		$this->assertStringContainsString( "'root' in parents", $request['query']['q'] );
+	}
+
+	/**
+	 * Test that an invalid cursor of a folder listing is an error.
+	 *
+	 * @return void
+	 */
+	public function test_get_file_list_with_invalid_folder_cursor(): void {
+		$this->connect();
+		add_filter( 'efml_include_subdirectories', '__return_true' );
+		$this->assertFalse( $this->get_protocol( $this->mark . 'folder1/' )->get_file_list( 'invalid' ) );
+		remove_filter( 'efml_include_subdirectories', '__return_true' );
+	}
+
+	/**
+	 * Test the import of a folder with its subfolders without import run: the files are loaded via the file list.
+	 *
+	 * @return void
+	 */
+	public function test_get_url_infos_for_folder_with_subfolders(): void {
+		$this->connect();
+		$this->add_google_response(
+			'GET',
+			'files',
+			200,
+			array( 'files' => array( $this->get_list_entry( 'file1', 'a.jpg', 'folder1' ), $this->get_list_entry( 'sub1', 'Holidays', 'folder1', true ) ) ),
+			array( 'q' => $this->get_folder_query( 'folder1' ) )
+		);
+		$this->add_google_response( 'GET', 'files', 200, array( 'files' => array( $this->get_list_entry( 'file2', 'b.jpg', 'sub1' ) ) ), array( 'q' => $this->get_folder_query( 'sub1' ) ) );
+		$this->add_google_file( 'file1', 'a.jpg', $this->get_example_content() );
+		$this->add_google_file( 'file2', 'b.jpg', $this->get_example_content() );
+
+		add_filter( 'efml_include_subdirectories', '__return_true' );
+		$infos = $this->get_protocol( $this->mark . 'folder1/' )->get_url_infos();
+		remove_filter( 'efml_include_subdirectories', '__return_true' );
+
+		$this->assertEquals( array( $this->mark . 'file1', $this->mark . 'file2' ), array_column( $infos, 'url' ) );
+		foreach ( $infos as $info ) {
+			wp_delete_file( $info['tmp-file'] );
+		}
+	}
+
+	/**
+	 * Add the response for the data of a file or folder with its parents.
+	 *
+	 * @param string             $id The ID.
+	 * @param string             $name The name.
+	 * @param array<int,string>  $parents The IDs of the parents.
+	 *
+	 * @return void
+	 */
+	private function add_entry( string $id, string $name, array $parents ): void {
+		$this->add_google_response(
+			'GET',
+			'files/' . $id,
+			200,
+			array(
+				'id'      => $id,
+				'name'    => $name,
+				'parents' => $parents,
+			),
+			array( 'fields' => 'id,name,parents' )
+		);
+	}
+
+	/**
+	 * Test the directories of files relative to a folder and to the main directory (via their parent folders).
+	 *
+	 * @return void
+	 */
+	public function test_get_relative_directory(): void {
+		$this->connect();
+		$this->add_entry( 'rd-root', 'My Drive', array() );
+		$this->add_entry( 'rd-folder', 'Photos', array( 'rd-root' ) );
+		$this->add_entry( 'rd-sub', 'Holidays', array( 'rd-folder' ) );
+		$this->add_entry( 'rd-file1', 'a.jpg', array( 'rd-folder' ) );
+		$this->add_entry( 'rd-file2', 'b.jpg', array( 'rd-sub' ) );
+		$this->add_entry( 'rd-file3', 'c.jpg', array( 'rd-root' ) );
+
+		// relative to the folder.
+		$folder = $this->get_protocol( $this->mark . 'rd-folder/' );
+		$this->assertEquals( '', $folder->get_relative_directory( $this->mark . 'rd-file1' ) );
+		$this->assertEquals( 'Holidays', $folder->get_relative_directory( $this->mark . 'rd-file2' ) );
+		$this->assertEquals( '', $folder->get_relative_directory( $this->mark . 'rd-file3' ) );
+
+		// relative to the main directory.
+		$all = $this->get_protocol( $this->mark . 'eflm-import-all' );
+		$this->assertEquals( '', $all->get_relative_directory( $this->mark . 'rd-file3' ) );
+		$this->assertEquals( 'Photos', $all->get_relative_directory( $this->mark . 'rd-file1' ) );
+		$this->assertEquals( 'Photos/Holidays', $all->get_relative_directory( $this->mark . 'rd-file2' ) );
+	}
 }

@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.1.0] - tbd
+
+### Added
+
+- Added the directories of files relative to their external source, for the folder structure in folder plugins of External Files in Media Library 6.1.0
+- Added support for the option to synchronize subdirectories of External Files in Media Library 6.1.0: folders could be synchronized with their subfolders, the main directory without subfolders uses only the files in the root of Google Drive
+- Added skipping of subfolders, which could not be read: no file is deleted after such a synchronization
+
 ## [2.0.0] - 22.11.2026
 
 ### Added
